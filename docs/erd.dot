@@ -1,0 +1,101 @@
+digraph ERD {
+  rankdir=LR;
+  node [shape=record, fontname="Helvetica", fontsize=10];
+
+  Users [label="{Users|id PK|name|email UNIQUE|password|role_default|...}"];
+  Roles [label="{Roles|id PK|name UNIQUE|description}"];
+  UserRoles [label="{UserRoles|id PK|user_id FK|role_id FK}"];
+  DriverProfiles [label="{DriverProfiles|id PK|user_id FK|license_no|phone|photo_path}"];
+
+  Warehouses [label="{Warehouses|id PK|code UNIQUE|name|address}"];
+  Locations [label="{Locations|id PK|warehouse_id FK|code|type|is_default}"];
+
+  Items [label="{Items|id PK|sku UNIQUE|name|uom_default|is_lot_tracked}"];
+  ItemLots [label="{ItemLots|id PK|item_id FK|lot_no|expiry_date}"];
+
+  Stocks [label="{Stocks|id PK|warehouse_id FK|location_id FK|null lot_id FK|item_id FK|qty_on_hand|qty_allocated|qty_available}"];
+  StockMovements [label="{StockMovements|id PK|stock_id FK|type|warehouse_id|item_id|lot_id|from_location_id|to_location_id|qty|uom|ref_type|ref_id|actor_user_id|moved_at}"];
+
+  Suppliers [label="{Suppliers|id PK|code UNIQUE|name|contact}"];
+  PurchaseOrders [label="{PurchaseOrders|id PK|supplier_id FK|warehouse_id FK|po_no UNIQUE|status|eta}"];
+  PoItems [label="{PoItems|id PK|purchase_order_id FK|item_id FK|qty_ordered|qty_received}"];
+  InboundShipments [label="{InboundShipments|id PK|purchase_order_id FK|asn_no|status|scheduled_at}"];
+  GrnHeaders [label="{GrnHeaders|id PK|inbound_shipment_id FK|grn_no UNIQUE|received_at|status|received_by}"];
+  GrnLines [label="{GrnLines|id PK|grn_header_id FK|po_item_id FK|item_lot_id FK|qty_received|putaway_location_id}"];
+
+  Customers [label="{Customers|id PK|code UNIQUE|name|phone|email}"];
+  SalesOrders [label="{SalesOrders|id PK|customer_id FK|warehouse_id FK|so_no UNIQUE|status|ship_by}"];
+  SoItems [label="{SoItems|id PK|sales_order_id FK|item_id FK|qty_ordered|qty_allocated}"];
+  OutboundShipments [label="{OutboundShipments|id PK|sales_order_id FK|wave_no|status|dispatched_at}"];
+  PickLists [label="{PickLists|id PK|outbound_shipment_id FK|picklist_no|picker_id|status}"];
+  PickLines [label="{PickLines|id PK|pick_list_id FK|so_item_id FK|item_lot_id FK|from_location_id|qty_picked}"];
+  Packages [label="{Packages|id PK|outbound_shipment_id FK|package_no|weight|dimensions}"];
+  Shipments [label="{Shipments|id PK|outbound_shipment_id FK|carrier|tracking_no|shipped_at}"];
+  Pods [label="{Pods|id PK|shipment_id FK|signed_by|signed_at|photo_path|signature_path}"];
+
+  Adjustments [label="{Adjustments|id PK|warehouse_id FK|adjustment_no|type|reason|status|posted_at|posted_by}"];
+  AdjustmentLines [label="{AdjustmentLines|id PK|adjustment_id FK|item_id FK|item_lot_id FK|location_id FK|qty_diff}"];
+
+  CycleCounts [label="{CycleCounts|id PK|warehouse_id FK|cycle_no|status|scheduled_for|completed_at}"];
+  CycleCountLines [label="{CycleCountLines|id PK|cycle_count_id FK|location_id FK|item_id FK|item_lot_id FK|qty_system|qty_counted}"];
+
+  Vehicles [label="{Vehicles|id PK|plate_no UNIQUE|type|capacity}"];
+  DriverAssignments [label="{DriverAssignments|id PK|assignment_no UNIQUE|driver_profile_id FK|vehicle_id FK|outbound_shipment_id FK|assigned_at|status}"];
+
+  Users -> UserRoles [arrowhead=normal];
+  Roles -> UserRoles;
+  Users -> DriverProfiles;
+
+  Warehouses -> Locations;
+  Warehouses -> Stocks;
+  Locations -> Stocks;
+  Items -> Stocks;
+  ItemLots -> Stocks;
+
+  Stocks -> StockMovements;
+  Users -> StockMovements;
+
+  Suppliers -> PurchaseOrders;
+  Warehouses -> PurchaseOrders;
+  PurchaseOrders -> PoItems;
+  Items -> PoItems;
+
+  PurchaseOrders -> InboundShipments;
+  InboundShipments -> GrnHeaders;
+  GrnHeaders -> GrnLines;
+  PoItems -> GrnLines;
+  ItemLots -> GrnLines;
+  Locations -> GrnLines;
+
+  Customers -> SalesOrders;
+  Warehouses -> SalesOrders;
+  SalesOrders -> SoItems;
+  Items -> SoItems;
+
+  SalesOrders -> OutboundShipments;
+  OutboundShipments -> PickLists;
+  PickLists -> PickLines;
+  SoItems -> PickLines;
+  ItemLots -> PickLines;
+  Locations -> PickLines;
+
+  OutboundShipments -> Packages;
+  OutboundShipments -> Shipments;
+  Shipments -> Pods;
+
+  Warehouses -> Adjustments;
+  Adjustments -> AdjustmentLines;
+  Items -> AdjustmentLines;
+  ItemLots -> AdjustmentLines;
+  Locations -> AdjustmentLines;
+
+  Warehouses -> CycleCounts;
+  CycleCounts -> CycleCountLines;
+  Items -> CycleCountLines;
+  ItemLots -> CycleCountLines;
+  Locations -> CycleCountLines;
+
+  Vehicles -> DriverAssignments;
+  DriverProfiles -> DriverAssignments;
+  OutboundShipments -> DriverAssignments;
+}

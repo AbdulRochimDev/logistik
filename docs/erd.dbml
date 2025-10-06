@@ -1,0 +1,443 @@
+Project warehouse_mvp {
+  database_type: "MySQL"
+  note: "Monitoring Logistik Gudang"
+}
+
+table users {
+  id bigint [pk]
+  name varchar(191)
+  email varchar(191) [unique]
+  password varchar(255)
+  default_role varchar(50)
+  email_verified_at datetime [null]
+  remember_token varchar(100) [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table roles {
+  id bigint [pk]
+  name varchar(50) [unique]
+  description varchar(191) [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table role_user {
+  id bigint [pk]
+  user_id bigint
+  role_id bigint
+  created_at timestamp [default: `current_timestamp`]
+  unique_user_role unique(user_id, role_id)
+}
+
+table driver_profiles {
+  id bigint [pk]
+  user_id bigint [unique]
+  license_number varchar(100)
+  phone varchar(30)
+  photo_path varchar(255) [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table warehouses {
+  id bigint [pk]
+  code varchar(50) [unique]
+  name varchar(191)
+  address text [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table locations {
+  id bigint [pk]
+  warehouse_id bigint
+  code varchar(100)
+  name varchar(191)
+  type varchar(50)
+  is_default boolean [default: false]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    warehouse_location unique(warehouse_id, code)
+  }
+}
+
+table items {
+  id bigint [pk]
+  sku varchar(100) [unique]
+  name varchar(191)
+  description text [null]
+  default_uom varchar(20)
+  is_lot_tracked boolean [default: false]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table item_lots {
+  id bigint [pk]
+  item_id bigint
+  lot_no varchar(100)
+  production_date date [null]
+  expiry_date date [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    unique_item_lot unique(item_id, lot_no)
+  }
+}
+
+table stocks {
+  id bigint [pk]
+  warehouse_id bigint
+  location_id bigint
+  item_id bigint
+  item_lot_id bigint [null]
+  qty_on_hand decimal(16,3) [default: 0]
+  qty_allocated decimal(16,3) [default: 0]
+  qty_available decimal(16,3) [note: "Generated: qty_on_hand - qty_allocated"]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    idx_stock_lookup (warehouse_id, location_id, item_id, item_lot_id)
+  }
+}
+
+table stock_movements {
+  id bigint [pk]
+  stock_id bigint
+  type varchar(50)
+  warehouse_id bigint
+  item_id bigint
+  item_lot_id bigint [null]
+  from_location_id bigint [null]
+  to_location_id bigint [null]
+  quantity decimal(16,3)
+  uom varchar(20)
+  ref_type varchar(100)
+  ref_id varchar(100)
+  actor_user_id bigint [null]
+  remarks varchar(255) [null]
+  moved_at timestamp
+  created_at timestamp [default: `current_timestamp`]
+  unique_ref unique(ref_type, ref_id, type)
+}
+
+table suppliers {
+  id bigint [pk]
+  code varchar(100) [unique]
+  name varchar(191)
+  contact_name varchar(191) [null]
+  phone varchar(30) [null]
+  email varchar(191) [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table purchase_orders {
+  id bigint [pk]
+  supplier_id bigint
+  warehouse_id bigint
+  po_no varchar(100) [unique]
+  status varchar(30)
+  eta date [null]
+  notes text [null]
+  created_by bigint
+  approved_by bigint [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table po_items {
+  id bigint [pk]
+  purchase_order_id bigint
+  item_id bigint
+  ordered_qty decimal(16,3)
+  received_qty decimal(16,3) [default: 0]
+  uom varchar(20)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table inbound_shipments {
+  id bigint [pk]
+  purchase_order_id bigint
+  asn_no varchar(100) [null]
+  status varchar(30)
+  scheduled_at datetime [null]
+  remarks text [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table grn_headers {
+  id bigint [pk]
+  inbound_shipment_id bigint
+  grn_no varchar(100) [unique]
+  received_at datetime
+  status varchar(30)
+  received_by bigint
+  verified_by bigint [null]
+  notes text [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table grn_lines {
+  id bigint [pk]
+  grn_header_id bigint
+  po_item_id bigint
+  item_lot_id bigint [null]
+  putaway_location_id bigint [null]
+  received_qty decimal(16,3)
+  rejected_qty decimal(16,3) [default: 0]
+  uom varchar(20)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table customers {
+  id bigint [pk]
+  code varchar(100) [unique]
+  name varchar(191)
+  phone varchar(30) [null]
+  email varchar(191) [null]
+  address text [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table sales_orders {
+  id bigint [pk]
+  customer_id bigint
+  warehouse_id bigint
+  so_no varchar(100) [unique]
+  status varchar(30)
+  ship_by date [null]
+  notes text [null]
+  created_by bigint
+  approved_by bigint [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table so_items {
+  id bigint [pk]
+  sales_order_id bigint
+  item_id bigint
+  ordered_qty decimal(16,3)
+  allocated_qty decimal(16,3) [default: 0]
+  uom varchar(20)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table outbound_shipments {
+  id bigint [pk]
+  sales_order_id bigint
+  wave_no varchar(100) [null]
+  status varchar(30)
+  dispatched_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table pick_lists {
+  id bigint [pk]
+  outbound_shipment_id bigint
+  picklist_no varchar(100)
+  picker_id bigint
+  status varchar(30)
+  started_at datetime [null]
+  completed_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    unique_picklist unique(picklist_no)
+  }
+}
+
+table pick_lines {
+  id bigint [pk]
+  pick_list_id bigint
+  so_item_id bigint
+  item_lot_id bigint [null]
+  from_location_id bigint
+  picked_qty decimal(16,3)
+  confirmed_by bigint [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table packages {
+  id bigint [pk]
+  outbound_shipment_id bigint
+  package_no varchar(100)
+  weight decimal(10,2) [null]
+  dimensions varchar(100) [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    unique_package unique(outbound_shipment_id, package_no)
+  }
+}
+
+table shipments {
+  id bigint [pk]
+  outbound_shipment_id bigint
+  carrier varchar(100) [null]
+  tracking_no varchar(191) [null]
+  shipped_at datetime [null]
+  departed_at datetime [null]
+  delivered_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+  indexes {
+    unique_tracking unique(tracking_no)
+  }
+}
+
+table pods {
+  id bigint [pk]
+  shipment_id bigint
+  signed_by varchar(191)
+  signed_at datetime
+  photo_path varchar(255) [null]
+  signature_path varchar(255) [null]
+  notes text [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table adjustments {
+  id bigint [pk]
+  warehouse_id bigint
+  adjustment_no varchar(100) [unique]
+  type varchar(30)
+  reason varchar(191)
+  status varchar(30)
+  requested_by bigint
+  approved_by bigint [null]
+  posted_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table adjustment_lines {
+  id bigint [pk]
+  adjustment_id bigint
+  item_id bigint
+  item_lot_id bigint [null]
+  location_id bigint
+  quantity_diff decimal(16,3)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table cycle_counts {
+  id bigint [pk]
+  warehouse_id bigint
+  cycle_no varchar(100) [unique]
+  status varchar(30)
+  scheduled_for datetime [null]
+  executed_by bigint [null]
+  completed_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table cycle_count_lines {
+  id bigint [pk]
+  cycle_count_id bigint
+  location_id bigint
+  item_id bigint
+  item_lot_id bigint [null]
+  system_qty decimal(16,3)
+  counted_qty decimal(16,3)
+  variance_qty decimal(16,3)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table vehicles {
+  id bigint [pk]
+  plate_no varchar(50) [unique]
+  type varchar(50) [null]
+  capacity varchar(100) [null]
+  status varchar(30)
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+table driver_assignments {
+  id bigint [pk]
+  assignment_no varchar(100) [unique]
+  driver_profile_id bigint
+  vehicle_id bigint
+  outbound_shipment_id bigint
+  assigned_at datetime
+  status varchar(30)
+  completed_at datetime [null]
+  created_at timestamp [default: `current_timestamp`]
+  updated_at timestamp [default: `current_timestamp`]
+}
+
+Ref: role_user.user_id > users.id
+Ref: role_user.role_id > roles.id
+Ref: driver_profiles.user_id > users.id
+Ref: locations.warehouse_id > warehouses.id
+Ref: item_lots.item_id > items.id
+Ref: stocks.warehouse_id > warehouses.id
+Ref: stocks.location_id > locations.id
+Ref: stocks.item_id > items.id
+Ref: stocks.item_lot_id > item_lots.id
+Ref: stock_movements.stock_id > stocks.id
+Ref: stock_movements.actor_user_id > users.id
+Ref: purchase_orders.supplier_id > suppliers.id
+Ref: purchase_orders.warehouse_id > warehouses.id
+Ref: purchase_orders.created_by > users.id
+Ref: purchase_orders.approved_by > users.id
+Ref: po_items.purchase_order_id > purchase_orders.id
+Ref: po_items.item_id > items.id
+Ref: inbound_shipments.purchase_order_id > purchase_orders.id
+Ref: grn_headers.inbound_shipment_id > inbound_shipments.id
+Ref: grn_headers.received_by > users.id
+Ref: grn_headers.verified_by > users.id
+Ref: grn_lines.grn_header_id > grn_headers.id
+Ref: grn_lines.po_item_id > po_items.id
+Ref: grn_lines.item_lot_id > item_lots.id
+Ref: grn_lines.putaway_location_id > locations.id
+Ref: sales_orders.customer_id > customers.id
+Ref: sales_orders.warehouse_id > warehouses.id
+Ref: sales_orders.created_by > users.id
+Ref: sales_orders.approved_by > users.id
+Ref: so_items.sales_order_id > sales_orders.id
+Ref: so_items.item_id > items.id
+Ref: outbound_shipments.sales_order_id > sales_orders.id
+Ref: pick_lists.outbound_shipment_id > outbound_shipments.id
+Ref: pick_lists.picker_id > users.id
+Ref: pick_lines.pick_list_id > pick_lists.id
+Ref: pick_lines.so_item_id > so_items.id
+Ref: pick_lines.item_lot_id > item_lots.id
+Ref: pick_lines.from_location_id > locations.id
+Ref: pick_lines.confirmed_by > users.id
+Ref: packages.outbound_shipment_id > outbound_shipments.id
+Ref: shipments.outbound_shipment_id > outbound_shipments.id
+Ref: pods.shipment_id > shipments.id
+Ref: adjustments.warehouse_id > warehouses.id
+Ref: adjustments.requested_by > users.id
+Ref: adjustments.approved_by > users.id
+Ref: adjustment_lines.adjustment_id > adjustments.id
+Ref: adjustment_lines.item_id > items.id
+Ref: adjustment_lines.item_lot_id > item_lots.id
+Ref: adjustment_lines.location_id > locations.id
+Ref: cycle_counts.warehouse_id > warehouses.id
+Ref: cycle_counts.executed_by > users.id
+Ref: cycle_count_lines.cycle_count_id > cycle_counts.id
+Ref: cycle_count_lines.location_id > locations.id
+Ref: cycle_count_lines.item_id > items.id
+Ref: cycle_count_lines.item_lot_id > item_lots.id
+Ref: driver_assignments.driver_profile_id > driver_profiles.id
+Ref: driver_assignments.vehicle_id > vehicles.id
+Ref: driver_assignments.outbound_shipment_id > outbound_shipments.id

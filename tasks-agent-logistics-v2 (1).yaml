@@ -1,0 +1,78 @@
+version: 2
+project: wms-logistics
+description: Roadmap + tasks with helpers (Blueprint, Pest, Tinker) for consistent development.
+phases:
+  - id: prep
+    name: Phase 0 — Preparation
+    tasks:
+      - id: install-blueprint
+        goal: Install Laravel Blueprint and config
+        steps:
+          - run: composer require --dev laravel-shift/blueprint
+          - run: php artisan vendor:publish --tag=blueprint-config
+          - write: draft-inbound.yaml
+          - write: draft-outbound.yaml
+        outputs: ["draft-inbound.yaml","draft-outbound.yaml"]
+      - id: setup-pest
+        goal: Install Pest and base tests
+        steps:
+          - run: composer require pestphp/pest --dev
+          - run: php artisan pest:install
+          - write: tests/Unit/StockServiceTest.php
+          - write: tests/Feature/PostGrnTest.php
+        done_when: ["php artisan test passes"]
+  - id: design
+    name: Phase 1 — Design
+    tasks:
+      - id: miro-erd
+        goal: Generate ERD via Miro AI prompt
+        inputs: ["prompt-kit-logistik-miro.md"]
+        outputs: ["docs/erd.svg"]
+  - id: scaffold
+    name: Phase 2 — Scaffold via Blueprint
+    tasks:
+      - id: generate-inbound
+        goal: Generate inbound models/migrations/controllers from draft-inbound.yaml
+        steps:
+          - run: php artisan blueprint:build --only=models,migrations,controllers,requests
+          - run: php artisan migrate
+      - id: generate-outbound
+        goal: Generate outbound artifacts
+        steps:
+          - run: php artisan blueprint:build
+          - run: php artisan migrate
+  - id: services
+    name: Phase 3 — Domain Services
+    tasks:
+      - id: stock-service
+        goal: Implement StockService + DTO + Events
+        outputs: ["app/Domain/Inventory/Services/StockService.php"]
+        done_when: ["unit tests pass"]
+      - id: inbound-service
+        goal: Implement GrnService (posting GRN uses StockService)
+      - id: outbound-service
+        goal: Implement OutboundService (allocate, pick, ship, pod)
+  - id: tests
+    name: Phase 4 — Tests & QA
+    tasks:
+      - id: unit-tests
+        goal: Expand Pest unit tests for services and actions
+      - id: feature-tests
+        goal: Feature tests for endpoints (PO/GRN/SO/Picking/Shipment/PoD)
+      - id: qa-script
+        goal: Composer QA script (pint + phpstan + pest)
+  - id: tooling
+    name: Phase 5 — Tinker Scripts
+    tasks:
+      - id: tinker-snippets
+        goal: Provide Tinker snippets in docs/tinker.md for quick diagnosis
+        outputs: ["docs/tinker.md"]
+  - id: deploy
+    name: Phase 6 — Deploy (cPanel)
+    tasks:
+      - id: build-assets
+        goal: npm run build and upload public/build
+      - id: env-setup
+        goal: Provide .env.example and production notes
+      - id: cron-setup
+        goal: Configure schedule:run every 5 minutes

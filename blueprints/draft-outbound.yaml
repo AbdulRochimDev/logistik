@@ -1,0 +1,136 @@
+models:
+  Customer:
+    code: string unique
+    name: string
+    phone: string nullable
+    email: string nullable
+    address: text nullable
+    relationships:
+      hasMany: SalesOrder
+  SalesOrder:
+    customer_id: id foreign
+    warehouse_id: id foreign:warehouses
+    so_no: string unique
+    status: enum:draft,approved,allocated,picked,shipped,completed default:draft
+    ship_by: date nullable
+    notes: text nullable
+    created_by: id foreign:users
+    approved_by: id foreign:users nullable
+    relationships:
+      hasMany: SoItem
+      hasOne: OutboundShipment
+  SoItem:
+    sales_order_id: id foreign
+    item_id: id foreign:items
+    uom: string
+    ordered_qty: decimal:16,3
+    allocated_qty: decimal:16,3 default:0
+  OutboundShipment:
+    sales_order_id: id foreign
+    wave_no: string nullable
+    status: enum:pending,allocated,picked,packed,shipped,delivered default:pending
+    dispatched_at: datetime nullable
+    relationships:
+      hasMany: PickList
+      hasMany: Package
+      hasOne: Shipment
+  PickList:
+    outbound_shipment_id: id foreign
+    picklist_no: string unique
+    picker_id: id foreign:users
+    status: enum:draft,in_progress,completed default:draft
+    started_at: datetime nullable
+    completed_at: datetime nullable
+    relationships:
+      hasMany: PickLine
+  PickLine:
+    pick_list_id: id foreign
+    so_item_id: id foreign
+    item_lot_id: id foreign:item_lots nullable
+    from_location_id: id foreign:locations
+    picked_qty: decimal:16,3
+    confirmed_by: id foreign:users nullable
+  Package:
+    outbound_shipment_id: id foreign
+    package_no: string
+    weight: decimal:10,2 nullable
+    dimensions: string nullable
+  Shipment:
+    outbound_shipment_id: id foreign
+    carrier: string nullable
+    tracking_no: string nullable
+    shipped_at: datetime nullable
+    departed_at: datetime nullable
+    delivered_at: datetime nullable
+    relationships:
+      hasOne: Pod
+  Pod:
+    shipment_id: id foreign
+    signed_by: string
+    signed_at: datetime
+    photo_path: string nullable
+    signature_path: string nullable
+    notes: text nullable
+  Vehicle:
+    plate_no: string unique
+    type: string nullable
+    capacity: string nullable
+    status: enum:available,in_use,maintenance default:available
+  DriverProfile:
+    user_id: id foreign:users unique
+    license_number: string
+    phone: string
+    photo_path: string nullable
+    relationships:
+      hasMany: DriverAssignment
+  DriverAssignment:
+    assignment_no: string unique
+    driver_profile_id: id foreign
+    vehicle_id: id foreign
+    outbound_shipment_id: id foreign
+    assigned_at: datetime
+    status: enum:assigned,en_route,delivered,closed default:assigned
+    completed_at: datetime nullable
+
+controllers:
+  Admin/Outbound/SalesOrderController:
+    resource: api
+    store:
+      validate: customer_id, warehouse_id, so_no, ship_by
+    update:
+      validate: status, ship_by, notes
+  Admin/Outbound/AllocationController:
+    store:
+      validate: sales_order_id
+  Admin/Outbound/PickingController:
+    store:
+      validate: pick_list_id, picked_lines
+  Admin/Outbound/ShipmentController:
+    resource: api
+    store:
+      validate: outbound_shipment_id, carrier, tracking_no
+  Admin/Outbound/PodController:
+    store:
+      validate: shipment_id, signed_at, signed_by
+  Driver/AssignmentController:
+    resource: api
+    update:
+      validate: status, completed_at
+
+seeders:
+  Customer
+  Vehicle
+
+factories:
+  Customer
+  SalesOrder
+  SoItem
+  OutboundShipment
+  PickList
+  PickLine
+  Package
+  Shipment
+  Pod
+  Vehicle
+  DriverProfile
+  DriverAssignment

@@ -1,0 +1,22 @@
+digraph DriverPodFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Helvetica", fontsize=10];
+
+  start [shape=circle, label="Mulai"];
+  assign [label="Assignment ke Driver"];
+  accept [label="Driver Terima via App"];
+  inspect [label="Inspect & Muat Kendaraan"];
+  depart [label="Berangkat & Navigasi"];
+  arrive [label="Tiba di Customer"];
+  confirm [label="Konfirmasi Penerima" shape=diamond];
+  capture [label="Capture Foto & Ttd" shape=parallelogram];
+  sync [label="Sync ke Backend"];
+  stock [label="StockService.move pod"];
+  close [label="Close Shipment & Kirim Notifikasi"];
+  end [shape=doublecircle, label="Selesai"];
+
+  start -> assign -> accept -> inspect -> depart -> arrive -> confirm;
+  confirm -> capture [label="Valid"];
+  capture -> sync -> stock -> close -> end;
+  confirm -> depart [label="Tidak Ada" style=dashed];
+}

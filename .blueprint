@@ -1,0 +1,69 @@
+created:
+    - database/migrations/2025_10_06_012038_create_suppliers_table.php
+    - database/migrations/2025_10_06_012039_create_warehouses_table.php
+    - database/migrations/2025_10_06_012040_create_locations_table.php
+    - database/migrations/2025_10_06_012041_create_items_table.php
+    - database/migrations/2025_10_06_012042_create_item_lots_table.php
+    - database/migrations/2025_10_06_012043_create_purchase_orders_table.php
+    - database/migrations/2025_10_06_012044_create_po_items_table.php
+    - database/migrations/2025_10_06_012045_create_inbound_shipments_table.php
+    - database/migrations/2025_10_06_012046_create_grn_headers_table.php
+    - database/migrations/2025_10_06_012047_create_grn_lines_table.php
+    - database/migrations/2025_10_06_012048_create_customers_table.php
+    - database/migrations/2025_10_06_012049_create_sales_orders_table.php
+    - database/migrations/2025_10_06_012050_create_so_items_table.php
+    - database/migrations/2025_10_06_012051_create_outbound_shipments_table.php
+    - database/migrations/2025_10_06_012052_create_pick_lists_table.php
+    - database/migrations/2025_10_06_012053_create_pick_lines_table.php
+    - database/migrations/2025_10_06_012054_create_packages_table.php
+    - database/migrations/2025_10_06_012055_create_shipments_table.php
+    - database/migrations/2025_10_06_012056_create_pods_table.php
+    - database/migrations/2025_10_06_012057_create_vehicles_table.php
+    - database/migrations/2025_10_06_012058_create_driver_profiles_table.php
+    - database/migrations/2025_10_06_012059_create_driver_assignments_table.php
+    - app/Models/Supplier.php
+    - app/Models/Warehouse.php
+    - app/Models/Location.php
+    - app/Models/Item.php
+    - app/Models/ItemLot.php
+    - app/Models/PurchaseOrder.php
+    - app/Models/PoItem.php
+    - app/Models/InboundShipment.php
+    - app/Models/GrnHeader.php
+    - app/Models/GrnLine.php
+    - app/Models/Customer.php
+    - app/Models/SalesOrder.php
+    - app/Models/SoItem.php
+    - app/Models/OutboundShipment.php
+    - app/Models/PickList.php
+    - app/Models/PickLine.php
+    - app/Models/Package.php
+    - app/Models/Shipment.php
+    - app/Models/Pod.php
+    - app/Models/Vehicle.php
+    - app/Models/DriverProfile.php
+    - app/Models/DriverAssignment.php
+models:
+    User: {  }
+    Supplier: { code: 'string unique', name: string, contact_name: 'string nullable', phone: 'string nullable', email: 'string nullable', address: 'text nullable', relationships: { hasMany: PurchaseOrder } }
+    Warehouse: { code: 'string unique', name: string, address: 'text nullable', relationships: { hasMany: 'Location, PurchaseOrder' } }
+    Location: { warehouse_id: 'id foreign', code: string, name: string, type: string, is_default: 'boolean default:false', relationships: { belongsTo: Warehouse } }
+    Item: { sku: 'string unique', name: string, description: 'text nullable', default_uom: string, is_lot_tracked: 'boolean default:false' }
+    ItemLot: { item_id: 'id foreign', lot_no: string, production_date: 'date nullable', expiry_date: 'date nullable' }
+    PurchaseOrder: { supplier_id: 'id foreign', warehouse_id: 'id foreign', po_no: 'string unique', status: 'enum:draft,approved,closed default:draft', eta: 'date nullable', notes: 'text nullable', created_by: 'id foreign:users', approved_by: 'id foreign:users nullable', relationships: { hasMany: PoItem, hasOne: InboundShipment } }
+    PoItem: { purchase_order_id: 'id foreign', item_id: 'id foreign', uom: string, ordered_qty: 'decimal:16,3', received_qty: 'decimal:16,3 default:0' }
+    InboundShipment: { purchase_order_id: 'id foreign', asn_no: 'string nullable', status: 'enum:scheduled,arrived,received,closed default:scheduled', scheduled_at: 'datetime nullable', remarks: 'text nullable', relationships: { hasMany: GrnHeader } }
+    GrnHeader: { inbound_shipment_id: 'id foreign', grn_no: 'string unique', received_at: datetime, status: 'enum:draft,posted,void default:draft', received_by: 'id foreign:users', verified_by: 'id foreign:users nullable', notes: 'text nullable', relationships: { hasMany: GrnLine } }
+    GrnLine: { grn_header_id: 'id foreign', po_item_id: 'id foreign', item_lot_id: 'id foreign nullable', putaway_location_id: 'id foreign:locations nullable', received_qty: 'decimal:16,3', rejected_qty: 'decimal:16,3 default:0', uom: string }
+    Customer: { code: 'string unique', name: string, phone: 'string nullable', email: 'string nullable', address: 'text nullable', relationships: { hasMany: SalesOrder } }
+    SalesOrder: { customer_id: 'id foreign', warehouse_id: 'id foreign:warehouses', so_no: 'string unique', status: 'enum:draft,approved,allocated,picked,shipped,completed default:draft', ship_by: 'date nullable', notes: 'text nullable', created_by: 'id foreign:users', approved_by: 'id foreign:users nullable', relationships: { hasMany: SoItem, hasOne: OutboundShipment } }
+    SoItem: { sales_order_id: 'id foreign', item_id: 'id foreign:items', uom: string, ordered_qty: 'decimal:16,3', allocated_qty: 'decimal:16,3 default:0' }
+    OutboundShipment: { sales_order_id: 'id foreign', wave_no: 'string nullable', status: 'enum:pending,allocated,picked,packed,shipped,delivered default:pending', dispatched_at: 'datetime nullable', relationships: { hasMany: 'PickList, Package', hasOne: Shipment } }
+    PickList: { outbound_shipment_id: 'id foreign', picklist_no: 'string unique', picker_id: 'id foreign:users', status: 'enum:draft,in_progress,completed default:draft', started_at: 'datetime nullable', completed_at: 'datetime nullable', relationships: { hasMany: PickLine } }
+    PickLine: { pick_list_id: 'id foreign', so_item_id: 'id foreign', item_lot_id: 'id foreign:item_lots nullable', from_location_id: 'id foreign:locations', picked_qty: 'decimal:16,3', confirmed_by: 'id foreign:users nullable' }
+    Package: { outbound_shipment_id: 'id foreign', package_no: string, weight: 'decimal:10,2 nullable', dimensions: 'string nullable' }
+    Shipment: { outbound_shipment_id: 'id foreign', carrier: 'string nullable', tracking_no: 'string nullable', shipped_at: 'datetime nullable', departed_at: 'datetime nullable', delivered_at: 'datetime nullable', relationships: { hasOne: Pod } }
+    Pod: { shipment_id: 'id foreign', signed_by: string, signed_at: datetime, photo_path: 'string nullable', signature_path: 'string nullable', notes: 'text nullable' }
+    Vehicle: { plate_no: 'string unique', type: 'string nullable', capacity: 'string nullable', status: 'enum:available,in_use,maintenance default:available' }
+    DriverProfile: { user_id: 'id foreign:users unique', license_number: string, phone: string, photo_path: 'string nullable', relationships: { hasMany: DriverAssignment } }
+    DriverAssignment: { assignment_no: 'string unique', driver_profile_id: 'id foreign', vehicle_id: 'id foreign', outbound_shipment_id: 'id foreign', assigned_at: datetime, status: 'enum:assigned,en_route,delivered,closed default:assigned', completed_at: 'datetime nullable' }

@@ -1,0 +1,18 @@
+digraph TransferAdjustFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Helvetica", fontsize=10];
+
+  start [shape=circle, label="Mulai"];
+  request [label="Request Transfer/Adjust"];
+  validate [label="Validasi Qty & Alasan"];
+  approval [label="Approval Supervisor" shape=diamond];
+  prepare [label="Siapkan Barang / Form"];
+  execute [label="StockService.move transfer/adjust" shape=parallelogram];
+  audit [label="Catat Movement & Audit Trail"];
+  end [shape=doublecircle, label="Selesai"];
+
+  start -> request -> validate -> approval;
+  approval -> prepare [label="Ya"];
+  prepare -> execute -> audit -> end;
+  approval -> start [label="Tidak", style=dashed];
+}

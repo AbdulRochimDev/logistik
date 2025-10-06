@@ -1,0 +1,18 @@
+digraph OutboundFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Helvetica", fontsize=10];
+
+  start [shape=circle, label="Mulai"];
+  so [label="Buat Sales Order"];
+  allocate [label="Allocate via StockService" shape=parallelogram];
+  picklist [label="Generate Pick List"];
+  picking [label="Picking & Scan Lot"];
+  packing [label="Packing & Label"];
+  ship [label="Create Shipment"];
+  load [label="Load ke Kendaraan"];
+  pod [label="PoD - Foto & Ttd" shape=parallelogram];
+  stock [label="StockService.move ship/pod"];
+  end [shape=doublecircle, label="Selesai"];
+
+  start -> so -> allocate -> picklist -> picking -> packing -> ship -> load -> pod -> stock -> end;
+}

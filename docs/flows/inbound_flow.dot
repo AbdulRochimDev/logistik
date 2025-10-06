@@ -1,0 +1,18 @@
+digraph InboundFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Helvetica", fontsize=10];
+
+  start [shape=circle, label="Mulai"];
+  po [label="Buat Purchase Order"];
+  supplier [label="Kirim PO ke Supplier"];
+  asn [label="Terima ASN / Jadwalkan Kedatangan"];
+  receive [label="Terima Barang di Gate"];
+  qc [label="QC & Hitung" shape=parallelogram];
+  grn [label="Post GRN"];
+  putaway [label="Putaway ke Lokasi" shape=parallelogram];
+  stock [label="StockService.move inbound_putaway"];
+  notify [label="Notifikasi Status PO"];
+  end [shape=doublecircle, label="Selesai"];
+
+  start -> po -> supplier -> asn -> receive -> qc -> grn -> putaway -> stock -> notify -> end;
+}

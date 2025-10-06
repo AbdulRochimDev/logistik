@@ -1,0 +1,21 @@
+digraph CycleCountFlow {
+  rankdir=LR;
+  node [shape=rectangle, fontname="Helvetica", fontsize=10];
+
+  start [shape=circle, label="Mulai"];
+  schedule [label="Jadwalkan Cycle Count"];
+  select [label="Pilih Lokasi & Item"];
+  freeze [label="Freeze Movement Sementara"];
+  count [label="Hitung Fisik"];
+  record [label="Input Hasil ke Sistem"];
+  compare [label="Bandingkan vs System Qty" shape=diamond];
+  adjust [label="StockService.move adjustment" shape=parallelogram];
+  review [label="Review Selisih & Approve"];
+  release [label="Unfreeze Lokasi"];
+  end [shape=doublecircle, label="Selesai"];
+
+  start -> schedule -> select -> freeze -> count -> record -> compare;
+  compare -> adjust [label="Selisih"];
+  adjust -> review -> release -> end;
+  compare -> review [label="Cocok"];
+}
