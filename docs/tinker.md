@@ -31,6 +31,22 @@ app(StockService::class)->move(
     movedAt: now(),
     remarks: 'Debugging session'
 );
+
+app(StockService::class)->move(
+    type: 'pick',
+    warehouseId: 1,
+    itemId: 456,
+    lotId: null,
+    fromLocationId: 12,
+    toLocationId: null,
+    qty: 3,
+    uom: 'PCS',
+    refType: 'TINKER',
+    refId: uniqid('pick-'),
+    actorUserId: auth()->id(),
+    movedAt: now(),
+    remarks: 'Simulasi picking'
+);
 ```
 
 ## Cek Movement Terbaru

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Inventory\Services;
 
+use App\Domain\Inventory\Events\StockUpdated;
 use App\Domain\Inventory\Exceptions\StockException;
 use App\Domain\Inventory\Models\Stock;
 use App\Domain\Inventory\Models\StockMovement;
@@ -38,6 +39,9 @@ class StockService
         ],
         'pod' => [
             ['direction' => 'from', 'on_hand' => 0.0, 'allocated' => -1.0],
+        ],
+        'deliver' => [
+            ['direction' => 'from', 'on_hand' => 0.0, 'allocated' => 0.0],
         ],
         'transfer_out' => [
             ['direction' => 'from', 'on_hand' => -1.0, 'allocated' => 0.0],
@@ -134,7 +138,7 @@ class StockService
                 $lotId
             ));
 
-            return StockMovement::query()->create([
+            $movement = StockMovement::query()->create([
                 'stock_id' => $primaryStock->id,
                 'type' => $type,
                 'warehouse_id' => $warehouseId,
@@ -150,6 +154,17 @@ class StockService
                 'remarks' => $remarks,
                 'moved_at' => $movedAt,
             ]);
+            DB::afterCommit(function () use ($movement) {
+                $fresh = StockMovement::query()
+                    ->with(['stock.item', 'stock.location.warehouse'])
+                    ->find($movement->id);
+
+                if ($fresh) {
+                    event(StockUpdated::fromMovement($fresh));
+                }
+            });
+
+            return $movement;
         });
     }
 

@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Domain\Inbound\Models\GrnLine;
 use App\Domain\Inbound\Models\GrnHeader;
+use App\Domain\Inbound\Models\GrnLine;
 use App\Domain\Inbound\Models\PoItem;
 use App\Domain\Inventory\Models\Location;
 use Illuminate\Database\Eloquent\Factories\Factory;

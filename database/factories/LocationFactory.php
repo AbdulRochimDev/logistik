@@ -15,7 +15,7 @@ class LocationFactory extends Factory
         return [
             'warehouse_id' => Warehouse::factory(),
             'code' => $this->faker->unique()->lexify('LOC-???'),
-            'name' => ucfirst($this->faker->word()) . ' Rack',
+            'name' => ucfirst($this->faker->word()).' Rack',
             'type' => $this->faker->randomElement(['bulk', 'pick', 'staging']),
             'is_default' => false,
         ];

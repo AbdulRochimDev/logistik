@@ -13,7 +13,7 @@ class WarehouseFactory extends Factory
     {
         return [
             'code' => $this->faker->unique()->lexify('WH-???'),
-            'name' => $this->faker->company() . ' Warehouse',
+            'name' => $this->faker->company().' Warehouse',
             'address' => $this->faker->address(),
         ];
     }

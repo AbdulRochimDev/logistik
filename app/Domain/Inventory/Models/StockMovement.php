@@ -4,7 +4,22 @@ namespace App\Domain\Inventory\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $stock_id
+ * @property string $type
+ * @property string $ref_type
+ * @property string $ref_id
+ * @property float $quantity
+ * @property-read Stock $stock
+ * @property-read Warehouse|null $warehouse
+ * @property-read Item|null $item
+ * @property-read ItemLot|null $lot
+ *
+ * @method static \Database\Factories\StockFactory newFactory()
+ */
 class StockMovement extends Model
 {
     use HasFactory;
@@ -29,13 +44,32 @@ class StockMovement extends Model
     ];
 
     protected $casts = [
-        'stock_id' => 'int',
-        'warehouse_id' => 'int',
-        'item_id' => 'int',
-        'item_lot_id' => 'int',
-        'from_location_id' => 'int',
-        'to_location_id' => 'int',
         'quantity' => 'float',
         'moved_at' => 'datetime',
     ];
+
+    public function stock(): BelongsTo
+    {
+        return $this->belongsTo(Stock::class);
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function item(): BelongsTo
+    {
+        return $this->belongsTo(Item::class);
+    }
+
+    public function lot(): BelongsTo
+    {
+        return $this->belongsTo(ItemLot::class, 'item_lot_id');
+    }
+
+    protected static function newFactory()
+    {
+        return \Database\Factories\StockFactory::new();
+    }
 }
