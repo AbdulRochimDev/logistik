@@ -17,6 +17,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $uom
  * @property-read Item|null $item
  * @property-read SalesOrder|null $salesOrder
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PickLine> $pickLines
+ * @property-read int|null $pick_lines_count
+ *
+ * @method static \Database\Factories\SoItemFactory newFactory()
  */
 class SoItem extends Model
 {

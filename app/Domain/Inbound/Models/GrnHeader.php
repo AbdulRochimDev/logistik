@@ -7,6 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $inbound_shipment_id
+ * @property string $grn_no
+ * @property \Carbon\CarbonInterface $received_at
+ * @property string $status
+ * @property int $received_by
+ * @property int|null $verified_by
+ * @property string|null $notes
+ * @property-read InboundShipment $inboundShipment
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GrnLine> $lines
+ * @property-read int|null $lines_count
+ *
+ * @method static \Database\Factories\GrnHeaderFactory newFactory()
+ */
 class GrnHeader extends Model
 {
     use HasFactory;

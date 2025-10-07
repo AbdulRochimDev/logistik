@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $is_default
  * @property-read Warehouse $warehouse
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Stock> $stocks
+ * @property-read int|null $stocks_count
  *
  * @method static \Database\Factories\LocationFactory newFactory()
  */

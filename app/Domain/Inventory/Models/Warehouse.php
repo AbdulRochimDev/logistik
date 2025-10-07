@@ -12,7 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string|null $address
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Location> $locations
+ * @property-read int|null $locations_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Stock> $stocks
+ * @property-read int|null $stocks_count
  *
  * @method static \Database\Factories\WarehouseFactory newFactory()
  */

@@ -41,7 +41,7 @@ return [
             'provider' => 'users',
         ],
         'sanctum' => [
-            'driver' => 'session',
+            'driver' => class_exists('Laravel\\Sanctum\\Guard') ? 'sanctum' : 'session',
             'provider' => 'users',
         ],
     ],

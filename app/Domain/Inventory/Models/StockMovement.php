@@ -13,6 +13,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $ref_type
  * @property string $ref_id
  * @property float $quantity
+ * @property string $uom
+ * @property int|null $warehouse_id
+ * @property int|null $item_id
+ * @property int|null $item_lot_id
+ * @property int|null $from_location_id
+ * @property int|null $to_location_id
+ * @property int|null $actor_user_id
+ * @property string|null $remarks
+ * @property \Carbon\CarbonInterface|null $moved_at
  * @property-read Stock $stock
  * @property-read Warehouse|null $warehouse
  * @property-read Item|null $item

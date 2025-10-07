@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $role_id
+ * @property-read \App\Models\User $user
+ * @property-read Role $role
+ */
 class UserRole extends Model
 {
     use HasFactory;

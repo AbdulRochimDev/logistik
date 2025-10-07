@@ -13,8 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $outbound_shipment_id
  * @property string $picklist_no
  * @property string $status
+ * @property \Carbon\CarbonInterface|null $started_at
+ * @property \Carbon\CarbonInterface|null $completed_at
+ * @property int|null $picker_id
  * @property-read OutboundShipment|null $outboundShipment
+ * @property-read User|null $picker
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PickLine> $lines
+ * @property-read int|null $lines_count
+ *
+ * @method static \Database\Factories\PickListFactory newFactory()
  */
 class PickList extends Model
 {

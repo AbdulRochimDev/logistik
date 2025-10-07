@@ -31,13 +31,20 @@ class StockUpdated implements ShouldBroadcast
     use SerializesModels;
 
     /**
+     * @var StockPayload
+     */
+    public readonly array $payload;
+
+    /**
      * @param  StockPayload  $payload
      */
     public function __construct(
-        public readonly array $payload,
+        array $payload,
         public readonly string $context,
         public readonly string $warehouseCode
-    ) {}
+    ) {
+        $this->payload = $payload;
+    }
 
     public static function fromMovement(StockMovement $movement): self
     {
@@ -82,10 +89,7 @@ class StockUpdated implements ShouldBroadcast
         );
     }
 
-    /**
-     * @return array<int, Channel>
-     */
-    public function broadcastOn(): array
+    public function broadcastOn(): Channel|array
     {
         return [new PrivateChannel('wms.'.$this->context.'.'.$this->warehouseCode)];
     }

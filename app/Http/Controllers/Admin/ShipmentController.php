@@ -82,7 +82,7 @@ class ShipmentController extends Controller
         return view('admin.shipments.show', compact('shipment'));
     }
 
-    public function edit(Shipment $shipment)
+    public function edit(Shipment $shipment): View|RedirectResponse
     {
         if (! $this->canModify($shipment)) {
             return redirect()->route('admin.shipments.show', $shipment)

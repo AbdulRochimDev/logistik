@@ -21,5 +21,7 @@
 - Menambah suite Pest: `LocationCrudTest`, `ItemCrudTest`, `PurchaseOrderCrudTest`, `PostGrnFeatureTest`, `DashboardStatsTest` untuk memastikan alur admin end-to-end.
 - Menstabilkan pipeline QA: menambahkan docblock relasi pada model inti, menjaga guard/exception sehingga PHPStan mengenali struktur domain, dan menguatkan OutboundService agar tidak mengandalkan nullsafe yang rapuh.
 - Menyediakan jembatan konfigurasi `config/wms.php` sehingga seeder & test tidak lagi bergantung langsung pada `env()`, sekaligus memperbarui helper DatabaseSsl.
-- Membuat fallback Sanctum mandiri (`App\Support\Auth\Concerns\HasApiTokensFallback`) plus unit test, memastikan aplikasi tetap berjalan tanpa paket `laravel/sanctum` sambil siap mengadopsi trait asli bila dipasang.
+- Membuat fallback Sanctum mandiri (`App\Support\Auth\HasApiTokensFallback`) plus unit test, memastikan aplikasi tetap berjalan tanpa paket `laravel/sanctum` sambil siap mengadopsi trait asli bila dipasang.
 - Menambah suite Pest unit `SanctumFallbackTest` dan `ConfigBridgeTest`, dan membersihkan import/gaya melalui Pint agar `composer qa` kembali hijau.
+- Merapikan seluruh phpdoc model domain (termasuk counter relasi) sehingga Larastan membaca graph Eloquent dengan benar dan OutboundService memakai guard eksplisit alih-alih nullsafe berisiko.
+- Mengganti polyfill Sanctum lama dengan adaptor `InteractsWithApiTokens` + trait fallback yang hanya aktif saat paket absen, sekaligus menyesuaikan `config/auth.php` agar memilih driver `sanctum` otomatis bila tersedia.

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property \Carbon\CarbonInterface|null $delivered_at
  * @property-read SalesOrder|null $salesOrder
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PickList> $pickLists
+ * @property-read int|null $pick_lists_count
  * @property-read Shipment|null $shipment
  *
  * @method static \Database\Factories\OutboundShipmentFactory newFactory()

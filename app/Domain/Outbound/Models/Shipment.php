@@ -24,7 +24,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Vehicle|null $vehicle
  * @property-read Warehouse|null $warehouse
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ShipmentItem> $items
+ * @property-read int|null $items_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, DriverAssignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read Pod|null $proofOfDelivery
  *
  * @method static \Database\Factories\ShipmentFactory newFactory()
  */

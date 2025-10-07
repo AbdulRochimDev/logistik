@@ -13,7 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $default_uom
  * @property bool $is_lot_tracked
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ItemLot> $lots
+ * @property-read int|null $lots_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Stock> $stocks
+ * @property-read int|null $stocks_count
  *
  * @method static \Database\Factories\ItemFactory newFactory()
  */

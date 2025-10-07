@@ -13,10 +13,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $pick_list_id
  * @property int $so_item_id
+ * @property int|null $item_lot_id
  * @property int $from_location_id
  * @property float $picked_qty
+ * @property int|null $confirmed_by
  * @property-read PickList $pickList
  * @property-read SoItem $soItem
+ * @property-read ItemLot|null $itemLot
+ * @property-read Location $fromLocation
+ * @property-read User|null $confirmer
+ *
+ * @method static \Database\Factories\PickLineFactory newFactory()
  */
 class PickLine extends Model
 {
