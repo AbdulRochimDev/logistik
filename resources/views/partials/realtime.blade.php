@@ -1,6 +1,30 @@
 @php
-    /** @var array<int, int|string> $shipments */
-    $shipments = array_map(static fn ($value) => (int) $value, array_values(array_unique($shipments ?? [])));
+    use Illuminate\Support\Collection;
+    use Traversable;
+
+    /**
+     * @param  iterable<int, mixed>|mixed  $values
+     * @return array<int, int>
+     */
+    $normalizeShipmentIds = static function ($values): array {
+        if ($values instanceof Collection) {
+            $values = $values->all();
+        } elseif ($values instanceof Traversable) {
+            $values = iterator_to_array($values, false);
+        }
+
+        if (! is_array($values)) {
+            $values = [$values];
+        }
+
+        $filtered = array_filter($values, static fn ($value) => is_numeric($value));
+
+        return array_values(array_unique(array_map(static fn ($value): int => (int) $value, $filtered)));
+    };
+
+    /** @var array<int, int> $shipments */
+    $shipments = $normalizeShipmentIds($shipments ?? []);
+
     /** @var array<int, array{label:string, reference?:string|null}> $shipmentMeta */
     $shipmentMeta = $shipmentMeta ?? [];
     $ablyKey = config('services.ably.key');
