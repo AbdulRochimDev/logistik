@@ -8,8 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property int $id
  * @property int $purchase_order_id
+ * @property string|null $asn_no
+ * @property string $status
+ * @property \Carbon\CarbonInterface|null $scheduled_at
+ * @property string|null $remarks
  * @property-read PurchaseOrder|null $purchaseOrder
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GrnHeader> $grns
+ * @property-read int|null $grns_count
+ *
+ * @method static \Database\Factories\InboundShipmentFactory newFactory()
  */
 class InboundShipment extends Model
 {

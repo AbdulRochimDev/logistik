@@ -3,7 +3,8 @@
 ## QA & Tooling
 - Jalankan `composer qa` (Pint → PHPStan → Pest) sebelum rilis. PHPStan memakai konfigurasi `phpstan.neon` dengan level 5 dan lintas path (`app`, `database/seeders`, `routes`).
 - Konfigurasi tambahan tersedia di `config/wms.php` untuk password default, akun demo, dan flag SSL database; gunakan `config()` ketimbang membaca `.env` langsung di runtime/seed/test.
-- Fallback Sanctum (tanpa paket `laravel/sanctum`) disediakan oleh trait `App\Support\Auth\Concerns\HasApiTokensFallback`. Saat paket resmi dipasang, trait `Laravel\Sanctum\HasApiTokens` otomatis diambil alih.
+- Fallback Sanctum (tanpa paket `laravel/sanctum`) kini dikemas melalui adaptor `App\Support\Auth\InteractsWithApiTokens` yang memilih trait bawaan Sanctum bila tersedia, atau `HasApiTokensFallback` jika tidak.
+- Guard `sanctum` di `config/auth.php` otomatis memakai driver `sanctum` ketika paket tersedia dan turun ke `session` saat fallback digunakan.
 
 ## TiDB TLS Setup
 - Simpan sertifikat root TiDB di dalam repo, contoh: `storage/TIDB/isrgrootx1supl.pem`. Path relatif otomatis diubah menjadi absolut oleh konfigurasi (`config/database.php` akan memanggil `base_path()`), jadi pastikan file berada di lokasi yang sama di mesin lokal, CI, dan produksi.

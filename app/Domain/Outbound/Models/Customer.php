@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $code
  * @property string $name
+ * @property string|null $email
+ * @property string|null $phone
+ * @property string|null $address
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SalesOrder> $salesOrders
+ * @property-read int|null $sales_orders_count
+ *
+ * @method static \Database\Factories\CustomerFactory newFactory()
  */
 class Customer extends Model
 {

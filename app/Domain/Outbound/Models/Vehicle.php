@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float|null $capacity
  * @property string $status
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Shipment> $shipments
+ * @property-read int|null $shipments_count
  *
  * @method static \Database\Factories\VehicleFactory newFactory()
  */

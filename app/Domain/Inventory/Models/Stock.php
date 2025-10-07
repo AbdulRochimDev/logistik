@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Item $item
  * @property-read ItemLot|null $lot
  * @property-read \Illuminate\Database\Eloquent\Collection<int, StockMovement> $movements
+ * @property-read int|null $movements_count
  *
  * @method static \Database\Factories\StockFactory newFactory()
  */

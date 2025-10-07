@@ -17,7 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $status
  * @property-read User|null $user
  * @property-read \Illuminate\Database\Eloquent\Collection<int, DriverAssignment> $assignments
+ * @property-read int|null $assignments_count
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Shipment> $shipments
+ * @property-read int|null $shipments_count
  *
  * @method static \Database\Factories\DriverFactory newFactory()
  */

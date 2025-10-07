@@ -10,8 +10,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
+ * @property int $id
  * @property int $supplier_id
  * @property int $warehouse_id
+ * @property string $po_no
+ * @property string $status
+ * @property \Carbon\CarbonInterface|null $eta
+ * @property string|null $notes
+ * @property int $created_by
+ * @property int|null $approved_by
+ * @property-read Supplier|null $supplier
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PoItem> $items
+ * @property-read int|null $items_count
+ * @property-read InboundShipment|null $inboundShipment
+ * @property-read Warehouse|null $warehouse
+ *
+ * @method static \Database\Factories\PurchaseOrderFactory newFactory()
  */
 class PurchaseOrder extends Model
 {

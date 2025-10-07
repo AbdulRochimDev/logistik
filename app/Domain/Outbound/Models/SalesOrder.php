@@ -15,8 +15,20 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $warehouse_id
  * @property int $customer_id
  * @property string $so_no
+ * @property string $status
+ * @property \Carbon\CarbonInterface|null $ship_by
+ * @property string|null $notes
+ * @property int $created_by
+ * @property int|null $approved_by
  * @property-read Warehouse $warehouse
  * @property-read Customer $customer
+ * @property-read User|null $creator
+ * @property-read User|null $approver
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SoItem> $items
+ * @property-read int|null $items_count
+ * @property-read OutboundShipment|null $outboundShipment
+ *
+ * @method static \Database\Factories\SalesOrderFactory newFactory()
  */
 class SalesOrder extends Model
 {

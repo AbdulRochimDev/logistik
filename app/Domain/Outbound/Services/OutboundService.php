@@ -124,8 +124,12 @@ class OutboundService
 
             $shipment->loadMissing('outboundShipment.salesOrder');
             $outboundShipment = $shipment->outboundShipment;
-            $salesOrder = $outboundShipment?->salesOrder;
-            if (! $outboundShipment || ! $salesOrder) {
+            if (! $outboundShipment) {
+                throw new StockException('Shipment is not linked to a sales order.');
+            }
+
+            $salesOrder = $outboundShipment->salesOrder;
+            if (! $salesOrder) {
                 throw new StockException('Shipment is not linked to a sales order.');
             }
 
@@ -239,8 +243,12 @@ class OutboundService
 
             $shipment->loadMissing('outboundShipment.salesOrder');
             $outboundShipment = $shipment->outboundShipment;
-            $salesOrder = $outboundShipment?->salesOrder;
-            if (! $outboundShipment || ! $salesOrder) {
+            if (! $outboundShipment) {
+                throw new StockException('Shipment is not linked to a sales order.');
+            }
+
+            $salesOrder = $outboundShipment->salesOrder;
+            if (! $salesOrder) {
                 throw new StockException('Shipment is not linked to a sales order.');
             }
 

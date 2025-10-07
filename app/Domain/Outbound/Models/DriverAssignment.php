@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $driver_id
  * @property int $shipment_id
  * @property \Carbon\CarbonInterface $assigned_at
+ * @property-read Driver $driver
+ * @property-read Shipment $shipment
+ *
+ * @method static \Database\Factories\DriverAssignmentFactory newFactory()
  */
 class DriverAssignment extends Model
 {

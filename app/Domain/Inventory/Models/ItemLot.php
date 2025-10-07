@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Carbon\CarbonInterface|null $expiry_date
  * @property-read Item $item
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Stock> $stocks
+ * @property-read int|null $stocks_count
  *
  * @method static \Database\Factories\ItemLotFactory newFactory()
  */
