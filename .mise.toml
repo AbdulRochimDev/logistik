@@ -1,0 +1,15 @@
+[tools]
+php = "8.2"
+composer = "2.7"
+
+[tasks.install-tools]
+description = "Install PHP and Composer versions declared in .mise.toml"
+run = [
+  "mise install"
+]
+
+[tasks.use-tools]
+description = "Activate the declared PHP and Composer globally"
+run = [
+  "mise use --global"
+]

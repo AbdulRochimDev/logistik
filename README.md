@@ -4,12 +4,18 @@
 
 The project targets PHP 8.2+ with OpenSSL 3.0. Composer will fail with an
 error similar to `libcrypto.so.1.1: version 'OPENSSL_1_1_1' not found` if the
-runtime is linked against OpenSSL 1.1. Use one of the following approaches to
-get a compatible toolchain before running `composer install`:
+runtime is linked against OpenSSL 1.1. A reproducible toolchain is declared in
+[`./.mise.toml`](.mise.toml); install it with:
 
-- **mise** (recommended): `mise use --global php@8.2` installs a PHP build that
-  already links against OpenSSL 3.0. Restart your shell so that `which php`
-  resolves to `~/.local/share/mise/installs/php/8.2/bin/php`.
+```bash
+mise trust
+mise run install-tools
+mise run use-tools
+```
+
+Alternatively, use one of the following approaches to prepare PHP before
+running `composer install`:
+
 - **Docker**: run Composer through the supplied container image
   (`docker compose run --rm php composer install`).
 - **Homebrew / package manager**: ensure the installed PHP provides `openssl`
