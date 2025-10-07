@@ -5,6 +5,18 @@
 - Konfigurasi tambahan tersedia di `config/wms.php` untuk password default, akun demo, dan flag SSL database; gunakan `config()` ketimbang membaca `.env` langsung di runtime/seed/test.
 - Fallback Sanctum (tanpa paket `laravel/sanctum`) disediakan oleh trait `App\Support\Auth\Concerns\HasApiTokensFallback`. Saat paket resmi dipasang, trait `Laravel\Sanctum\HasApiTokens` otomatis diambil alih.
 
+## Realtime & Ably Setup
+- Tambahkan kredensial ke `.env`:
+
+```env
+BROADCAST_DRIVER=ably
+ABLY_KEY=your-ably-api-key
+```
+
+- Konfigurasi dibaca melalui `config/broadcasting.php` dan `config/services.php`; jangan gunakan `env()` langsung di kode.
+- Route otentikasi private channel berada di `routes/channels.php` (middleware `web` + `auth`). Admin (`admin_gudang`) dan driver yang ditugaskan dapat mengakses kanal `wms.outbound.shipment.{shipmentId}`.
+- Partial Blade `resources/views/partials/realtime.blade.php` memuat Ably JS + Laravel Echo sekali dan mendaftarkan subscription sesuai daftar shipment yang dikirim dari controller.
+
 ## TiDB TLS Setup
 - Simpan sertifikat root TiDB di dalam repo, contoh: `storage/TIDB/isrgrootx1supl.pem`. Path relatif otomatis diubah menjadi absolut oleh konfigurasi (`config/database.php` akan memanggil `base_path()`), jadi pastikan file berada di lokasi yang sama di mesin lokal, CI, dan produksi.
 - Atur `.env` dengan variabel berikut:
@@ -117,6 +129,15 @@ Ensure Laravel scheduler (or job processors) run with the same database and cach
   - Header `X-Idempotency-Key` recommended; fallback `POD|hash(shipment,signed_by,ts,media)`.
   - Response returns `{ pod, shipment, movements[], idempotency_key }`; StockService `'deliver'` moves release residual allocations. Replays reuse same movements.
 
+### Outbound Broadcast Events
+- Channel privat: `wms.outbound.shipment.{shipmentId}`
+- Emit dilakukan setelah commit transaksi (`DB::afterCommit`), memastikan payload mencerminkan data terbaru di database.
+- Payload:
+  - `pick.completed` → `{ shipment_id, shipment_item_id, item_id, lot_id?, qty_picked, picked_at, actor_user_id? }`
+  - `shipment.dispatched` → `{ shipment_id, driver_id, vehicle_id, dispatched_at }`
+  - `shipment.delivered` → `{ shipment_id, pod_id, delivered_at, signer }`
+- Dashboard admin dan halaman shipment menggunakan payload di atas untuk menambahkan aktivitas tanpa reload dan meng-update progress pick secara langsung.
+
 ## Scan API
 - **Endpoint:** `POST /api/scan`
 - **Headers:**
@@ -149,32 +170,24 @@ Ensure Laravel scheduler (or job processors) run with the same database and cach
 import Echo from 'laravel-echo';
 import Ably from 'ably/promises';
 
-window.Ably = new Ably.Realtime.Promise({ key: import.meta.env.VITE_ABLY_KEY });
+const ably = new Ably.Realtime.Promise({ key: import.meta.env.VITE_ABLY_KEY });
 
-window.Echo = new Echo({
+const echo = new Echo({
   broadcaster: 'ably',
   key: import.meta.env.VITE_ABLY_KEY,
+  client: ably,
   authEndpoint: '/broadcasting/auth',
   auth: {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
     },
   },
 });
 
-window.Echo.private('wms.scan.WH1')
-  .listen('.StockUpdated', (event) => {
-    console.log(`[Scan] ${event.sku} @ ${event.location_code}`, {
-      onHand: event.qty_on_hand,
-      allocated: event.qty_allocated,
-      movedAt: event.moved_at,
-    });
-  });
-
-window.Echo.private('wms.inbound.grn.WH1')
-  .listen('.StockUpdated', (event) => {
-    notifyInbound(event);
-  });
+echo.private(`wms.outbound.shipment.${shipmentId}`)
+  .listen('.pick.completed', ({ shipment_item_id, qty_picked }) => updatePick(shipment_item_id, qty_picked))
+  .listen('.shipment.dispatched', ({ dispatched_at }) => markDispatched(dispatched_at))
+  .listen('.shipment.delivered', ({ delivered_at, signer }) => markDelivered(delivered_at, signer));
 ```
 
 ## Admin CRUD & Quick Actions

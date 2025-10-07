@@ -173,6 +173,7 @@
         <div class="stat-pill-group">
             <span class="stat-pill">Total PO Aktif: {{ $openPurchaseOrders }}</span>
             <span class="stat-pill">Lokasi Terdaftar: {{ $warehouseBreakdown->sum('locations_count') }}</span>
+            <span class="stat-pill">Shipment Terbuka: {{ $openShipments }}</span>
             <a class="stat-pill" href="{{ route('admin.purchase-orders.index') }}" style="text-decoration:none;">
                 Kelola PO →
             </a>
@@ -195,6 +196,21 @@
             <strong>{{ number_format((float) ($totals->qty_available ?? 0), 0, ',', '.') }}</strong>
             <span>Dapat digunakan untuk alokasi baru</span>
         </div>
+        <div class="metric-card">
+            <h3>Open Shipments</h3>
+            <strong>{{ number_format((float) $openShipments, 0, ',', '.') }}</strong>
+            <span>Status != delivered, siap dipantau</span>
+        </div>
+        <div class="metric-card">
+            <h3>Picked Today</h3>
+            <strong>{{ number_format((float) $pickedToday, 0, ',', '.') }}</strong>
+            <span>Total qty pick terselesaikan hari ini</span>
+        </div>
+        <div class="metric-card">
+            <h3>Delivered Today</h3>
+            <strong>{{ number_format((float) $deliveredToday, 0, ',', '.') }}</strong>
+            <span>Qty terkirim dengan PoD pada tanggal ini</span>
+        </div>
     </section>
 
     <section class="grid-columns">
@@ -205,17 +221,19 @@
 
         <article class="panel-card">
             <h2>Aktivitas Stok Terbaru</h2>
-            <div class="movement-feed">
-                @forelse($recentMovements as $movement)
+            <div class="movement-feed" data-activity-feed data-activity-limit="20">
+                @forelse($activityFeed as $activity)
                     <div class="movement-item">
                         <strong>
-                            <span>{{ $movement['type'] }}</span>
-                            <span>{{ number_format((float) $movement['quantity'], 0, ',', '.') }}</span>
+                            <span>{{ $activity['title'] }}</span>
+                            <span>{{ $activity['highlight'] }}</span>
                         </strong>
-                        <span>SKU: {{ $movement['item'] }} · {{ $movement['warehouse'] ?? 'Gudang' }}</span>
-                        <span style="color:#64748b;font-size:0.85rem;">{{ $movement['timestamp'] ?? '—' }}</span>
-                        @if(! empty($movement['remarks']))
-                            <span style="color:#475569;font-size:0.9rem;">"{{ $movement['remarks'] }}"</span>
+                        @if(! empty($activity['meta']))
+                            <span>{{ $activity['meta'] }}</span>
+                        @endif
+                        <span style="color:#64748b;font-size:0.85rem;">{{ $activity['timestamp_human'] ?? '—' }}</span>
+                        @if(! empty($activity['remarks']))
+                            <span style="color:#475569;font-size:0.9rem;">"{{ $activity['remarks'] }}"</span>
                         @endif
                     </div>
                 @empty
@@ -243,4 +261,8 @@
         </div>
     </section>
 </div>
+@include('partials.realtime', [
+    'shipments' => $openShipmentIds,
+    'shipmentMeta' => $shipmentMeta,
+])
 @endsection

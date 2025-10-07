@@ -1,5 +1,11 @@
 # Changelog
-
+# 2025-10-08
+- Milestone 2: menambahkan event realtime outbound (`PickCompleted`, `ShipmentDispatched`, `ShipmentDelivered`) dengan emisi pasca-commit dan channel privat `wms.outbound.shipment.{id}`.
+- Membuat partial Blade realtime yang memuat Ably + Laravel Echo, menggabungkan aktivitas terbaru ke dashboard dan memperbarui progress shipment tanpa reload.
+- Memperluas dashboard admin dengan KPI open shipments/picked today/delivered today, agregasi warehouse harian, serta feed gabungan stock movement + event outbound.
+- Menambahkan progress pick live di halaman shipment show, lengkap dengan data attribute untuk pembaruan via event.
+- Menyertakan konfigurasi broadcasting (`config/broadcasting.php`), guard channel, dan dokumentasi integrasi (INTEGRATION.md & WORKFLOW.md) yang mencakup diagram alur baru.
+- Menambahkan suite Pest `RealtimeBroadcastTest`, `PostCommitEmissionTest`, `DashboardOutboundStatsTest`, dan `ShipmentShowRealtimeWiringTest` untuk memverifikasi alur realtime & KPI.
 ## 2025-10-07
 - Added consolidated logistics core migration covering roles, warehouse/location/item master data, PO/GRN tables, stocks, and stock_movements.
 - Introduced stock movement idempotency indexes and generated column for qty_available.

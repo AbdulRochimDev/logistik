@@ -14,6 +14,15 @@
 - **Pick:** `POST /api/admin/outbound/pick/complete` membentuk `PickLineData` dan memanggil `OutboundService::completePick()` → `StockService::move('pick', ...)` mengurangi `qty_on_hand` sambil menjaga `qty_allocated` hingga PoD.
 - **Dispatch:** `POST /api/admin/outbound/shipment/dispatch` memperbarui carrier/timestamp pada shipment + outbound.
 - **Deliver:** Driver/admin memanggil `POST /api/admin/outbound/shipment/deliver` membawa `ShipmentPodData`; layanan membuat PoD (idempotensi key) dan menjalankan `StockService::move('deliver', ...)` untuk melepas alokasi residual.
+- **Realtime:** Setelah setiap aksi pick/dispatch/deliver, `OutboundService` mendaftarkan event domain (`PickCompleted`, `ShipmentDispatched`, `ShipmentDelivered`) yang disiarkan ke channel `wms.outbound.shipment.{shipmentId}` setelah transaksi commit.
+
+```
+OutboundService
+     │
+     ├──▶ StockService::move()
+     │
+     └──▶ DB::afterCommit ──▶ Domain Event ──▶ Ably Broadcast ──▶ Dashboard & Shipment UI update
+```
 
 ## Handheld Scan Flow
 - **Endpoint:** `/api/scan` menerima payload dari perangkat (sku, qty, direction, location, ts, device_id, lot_no?).

@@ -10,6 +10,9 @@ use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Outbound\DTO\PickLineData;
 use App\Domain\Outbound\DTO\ShipmentPodData;
+use App\Domain\Outbound\Events\PickCompleted;
+use App\Domain\Outbound\Events\ShipmentDelivered;
+use App\Domain\Outbound\Events\ShipmentDispatched;
 use App\Domain\Outbound\Models\Pod;
 use App\Domain\Outbound\Models\Shipment;
 use App\Domain\Outbound\Models\ShipmentItem;
@@ -157,7 +160,9 @@ class OutboundService
                 remarks: $data->remarks,
             );
 
-            if ($movement->wasRecentlyCreated) {
+            $shouldBroadcastPick = $movement->wasRecentlyCreated;
+
+            if ($shouldBroadcastPick) {
                 $shipmentItem->qty_picked += $data->quantity;
                 $shipmentItem->qty_shipped += $data->quantity;
                 $shipmentItem->save();
@@ -171,6 +176,22 @@ class OutboundService
 
             $shipmentItem->refresh();
             $shipment->refresh();
+
+            if ($shouldBroadcastPick) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'shipment_item_id' => $shipmentItem->id,
+                    'item_id' => $shipmentItem->item_id,
+                    'lot_id' => $shipmentItem->item_lot_id,
+                    'qty_picked' => (float) $data->quantity,
+                    'picked_at' => $data->pickedAt->toIso8601String(),
+                    'actor_user_id' => $data->actorUserId,
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new PickCompleted($payload));
+                });
+            }
 
             return [
                 'movement' => $movement,
@@ -217,6 +238,19 @@ class OutboundService
             }
 
             $shipment->load(['items', 'driver', 'vehicle']);
+
+            if ($statusChanged) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'driver_id' => $shipment->driver_id,
+                    'vehicle_id' => $shipment->vehicle_id,
+                    'dispatched_at' => optional($shipment->dispatched_at)->toIso8601String(),
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new ShipmentDispatched($payload));
+                });
+            }
 
             return [
                 'shipment' => $shipment,
@@ -318,6 +352,19 @@ class OutboundService
 
             $pod->refresh();
             $shipment->load('items');
+
+            if ($created) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'pod_id' => $pod->id,
+                    'delivered_at' => optional($shipment->delivered_at)->toIso8601String(),
+                    'signer' => $pod->signed_by,
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new ShipmentDelivered($payload));
+                });
+            }
 
             return [
                 'pod' => $pod,
