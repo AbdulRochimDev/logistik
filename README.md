@@ -15,6 +15,12 @@ get a compatible toolchain before running `composer install`:
 - **Homebrew / package manager**: ensure the installed PHP provides `openssl`
   3.0+ (e.g. `brew install php@8.3`).
 
+If you encounter compatibility errors (for example
+```
+php: /lib/x86_64-linux-gnu/libcrypto.so.1.1: version `OPENSSL_1_1_1' not found
+```
+follow the remediation steps in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 After PHP is available, install dependencies and prepare the framework cache:
 
 ```bash
