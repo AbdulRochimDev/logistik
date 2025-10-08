@@ -30,6 +30,7 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
+            "Laravel\\Sanctum\\": "app/Support/Auth/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }
@@ -40,7 +41,11 @@
         }
     },
     "scripts": {
+        "ensure-bootstrap-cache": [
+            "@php -r \"(is_dir('bootstrap/cache') || mkdir('bootstrap/cache', 0777, true)) && is_writable('bootstrap/cache') || (fwrite(STDERR, 'The bootstrap/cache directory is not writable.' . PHP_EOL) && exit(1));\""
+        ],
         "post-autoload-dump": [
+            "@ensure-bootstrap-cache",
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
