@@ -1,7 +1,12 @@
 # Git Push Guide
 
-This repository does not configure a remote by default. To publish the `work` branch to your own
-remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-push berikut agar QA tetap hijau:
+Repositori ini tidak menyiapkan remote secara otomatis. Gunakan panduan berikut untuk mendorong
+(`push`) cabang `work` ke repo pribadi Anda. Bagian pertama memuat ringkasan cepat dalam bahasa
+Indonesia, diikuti referensi rinci yang tetap relevan untuk alur kerja Git standar.
+
+> **Tip kilat:** jika Anda hanya butuh komando ringkas, lompat ke [Quick Start](#quick-start).
+
+Sebelum mendorong perubahan, jalankan checklist pra-push berikut agar QA tetap hijau:
 
 ## Pre-Push Checklist
 
@@ -11,7 +16,23 @@ remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-
 4. `php artisan migrate --force` (pastikan migrasi baru aman)
 5. `npm install && npm run build` bila ada perubahan front-end/Vite
 
-## Mengonfigurasi Remote
+## Quick Start
+
+```bash
+# 1. Tambahkan remote (opsional bila belum ada)
+git remote add origin git@github.com:your-account/logistik.git
+
+# 2. Verifikasi status kerja & jalankan checklist QA (lihat di atas)
+git status -sb
+
+# 3. Dorong cabang `work`
+git push -u origin work
+```
+
+Jika remote sudah ada, Anda dapat langsung menjalankan langkah 2 dan 3. Berikut bagian rinci bila
+Anda membutuhkan konteks tambahan.
+
+## Mengonfigurasi Remote (Rinci)
 
 1. Add your remote once (replace `origin` with your preferred remote name and adjust the URL):
 
@@ -28,7 +49,16 @@ remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-
    git status -sb
    ```
 
-3. Push the current `work` branch to the remote:
+3. (Opsional) Uji koneksi SSH bila menggunakan `git@github.com`:
+
+   ```bash
+   ssh -T git@github.com
+   ```
+
+   GitHub akan menampilkan pesan sambutan jika kunci SSH Anda sudah terhubung dengan akun yang
+   benar.
+
+4. Push the current `work` branch to the remote:
 
    ```bash
    git push -u origin work
@@ -37,7 +67,7 @@ remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-
    The `-u` flag sets `origin/work` as the default upstream so future `git push` and `git pull`
    commands can omit the remote and branch name.
 
-4. If you update the branch later, simply run:
+5. If you update the branch later, simply run:
 
    ```bash
    git push
@@ -56,3 +86,13 @@ remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-
   git push
   ```
 
+- **HTTPS + Personal Access Token (PAT)** – Jika lebih nyaman memakai HTTPS, ganti langkah `git
+  remote add` dengan URL berbasis HTTPS dan gunakan PAT sebagai password ketika diminta:
+
+  ```bash
+  git remote add origin https://github.com/your-account/logistik.git
+  git push -u origin work
+  ```
+
+- **Force push aman** – Bila Anda perlu memperbarui riwayat commit setelah rebase, gunakan
+  `git push --force-with-lease` agar tidak menimpa pekerjaan rekan tanpa sengaja.
