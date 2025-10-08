@@ -22,6 +22,8 @@
     .progress-header { display:flex;justify-content:space-between;align-items:center;font-weight:600;color:#0f172a; }
     .progress-bar { width:100%;height:12px;border-radius:999px;background:rgba(148,163,184,0.25);overflow:hidden; }
     .progress-bar-fill { height:100%;background:linear-gradient(135deg,#0ea5e9,#22c55e);transition:width 0.3s ease; }
+    .pod-actions { display:flex;align-items:center;gap:0.5rem;margin-top:0.65rem;flex-wrap:wrap; }
+    .pod-replay-badge { display:inline-flex;align-items:center;padding:0.25rem 0.8rem;border-radius:999px;background:linear-gradient(135deg,rgba(236,72,153,0.15),rgba(59,130,246,0.18));color:#0f172a;font-size:0.78rem;font-weight:600;border:1px solid rgba(59,130,246,0.2); }
 </style>
 @endpush
 
@@ -158,6 +160,16 @@
                         Ditandatangani oleh {{ $shipment->proofOfDelivery->signed_by }}
                         pada {{ optional($shipment->proofOfDelivery->signed_at)->format('d M Y H:i') ?? '—' }}
                     </p>
+                    <div class="pod-actions">
+                        @if($podUrl)
+                            <a href="{{ $podUrl }}" class="btn btn-primary" target="_blank" rel="noopener">Lihat bukti</a>
+                        @else
+                            <span style="font-size:0.85rem;color:#94a3b8;">File PoD tidak tersedia.</span>
+                        @endif
+                        @if($idempotentReplay)
+                            <span class="pod-replay-badge" title="Aksi deliver diulang menggunakan idempotency key yang sama.">Idempotent replay</span>
+                        @endif
+                    </div>
                 </div>
             @endif
         </div>

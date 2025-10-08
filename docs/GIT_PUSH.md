@@ -1,7 +1,17 @@
 # Git Push Guide
 
 This repository does not configure a remote by default. To publish the `work` branch to your own
-remote, follow these steps:
+remote, follow these steps. Sebelum mendorong perubahan, jalankan checklist pra-push berikut agar QA tetap hijau:
+
+## Pre-Push Checklist
+
+1. `composer install --no-interaction --no-progress`
+2. `composer dump-autoload --no-scripts`
+3. `composer qa` (menjalankan Pint → PHPStan → Pest)
+4. `php artisan migrate --force` (pastikan migrasi baru aman)
+5. `npm install && npm run build` bila ada perubahan front-end/Vite
+
+## Mengonfigurasi Remote
 
 1. Add your remote once (replace `origin` with your preferred remote name and adjust the URL):
 

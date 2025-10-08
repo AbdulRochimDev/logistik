@@ -15,4 +15,9 @@ return [
             'verify_server_cert' => env('DB_SSL_VERIFY_SERVER_CERT'),
         ],
     ],
+
+    'storage' => [
+        'pod_disk' => env('POD_STORAGE_DISK', env('FILESYSTEM_DISK', 's3')),
+        'pod_url_ttl' => (int) env('POD_URL_TTL', 900),
+    ],
 ];

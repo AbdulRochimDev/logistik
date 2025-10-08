@@ -37,7 +37,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function (): void {
 });
 
 Route::prefix('driver')
-    ->middleware(['auth:sanctum', 'throttle:60,1', 'role:driver'])
+    ->middleware(['auth:sanctum', 'throttle:driver-api', 'role:driver'])
     ->group(function (): void {
         Route::get('/assignments', DriverAssignmentsController::class)->name('driver.assignments');
         Route::post('/pick', DriverPickController::class)->name('driver.pick');

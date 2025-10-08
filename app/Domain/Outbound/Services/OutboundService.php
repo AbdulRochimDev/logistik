@@ -278,18 +278,32 @@ class OutboundService
                 throw new StockException('Shipment is not linked to a sales order.');
             }
 
-            $existingPod = $data->idempotencyKey
-                ? Pod::query()->where('external_idempotency_key', $data->idempotencyKey)->first()
-                : null;
+            $shipment->loadMissing('proofOfDelivery');
 
-            if ($existingPod && $existingPod->shipment_id !== $shipment->id) {
-                throw new StockException('Idempotency key already used for another shipment.', 409);
+            if ($data->idempotencyKey !== '') {
+                $conflictingPodExists = Pod::query()
+                    ->where('external_idempotency_key', $data->idempotencyKey)
+                    ->where('shipment_id', '!=', $shipment->id)
+                    ->exists();
+
+                if ($conflictingPodExists) {
+                    throw new StockException('Idempotency key already used for another shipment.', 409);
+                }
             }
 
-            /** @var Pod $pod */
-            $pod = $shipment->proofOfDelivery()->updateOrCreate(
-                ['shipment_id' => $shipment->id],
-                [
+            /** @var Pod|null $existingPod */
+            $existingPod = $shipment->proofOfDelivery;
+
+            if ($existingPod && $existingPod->external_idempotency_key !== $data->idempotencyKey) {
+                throw new StockException('Proof of delivery already recorded for this shipment.', 409);
+            }
+
+            $movements = [];
+            $created = false;
+
+            if (! $existingPod) {
+                /** @var Pod $pod */
+                $pod = $shipment->proofOfDelivery()->create([
                     'signed_by' => $data->signerName,
                     'signer_id' => $data->signerId,
                     'signed_at' => $data->signedAt,
@@ -298,44 +312,55 @@ class OutboundService
                     'notes' => $data->notes,
                     'meta' => $data->meta,
                     'external_idempotency_key' => $data->idempotencyKey,
-                ]
-            );
+                ]);
 
-            $created = $pod->wasRecentlyCreated;
-            $movements = [];
+                foreach ($shipment->items as $item) {
+                    $remaining = $item->qty_picked - $item->qty_delivered;
+                    if ($remaining <= 0) {
+                        continue;
+                    }
 
-            foreach ($shipment->items as $item) {
-                $remaining = $item->qty_picked - $item->qty_delivered;
-                if ($remaining <= 0) {
-                    continue;
+                    $salesOrderItem = $item->salesOrderItem;
+                    $uom = $salesOrderItem ? $salesOrderItem->uom : 'PCS';
+
+                    $movement = $this->stockService->move(
+                        type: 'deliver',
+                        warehouseId: $salesOrder->warehouse_id,
+                        itemId: $item->item_id,
+                        lotId: $item->item_lot_id,
+                        fromLocationId: $item->from_location_id,
+                        toLocationId: null,
+                        qty: $remaining,
+                        uom: $uom,
+                        refType: 'POD',
+                        refId: sprintf('%d|%s', $item->id, $data->idempotencyKey),
+                        actorUserId: $data->actorUserId,
+                        movedAt: $data->signedAt,
+                        remarks: $data->notes,
+                    );
+
+                    if ($movement->wasRecentlyCreated) {
+                        $item->qty_delivered += $remaining;
+                        $item->save();
+                        $created = true;
+                    }
+
+                    $movements[] = $movement;
                 }
 
-                $salesOrderItem = $item->salesOrderItem;
-                $uom = $salesOrderItem ? $salesOrderItem->uom : 'PCS';
-
-                $movement = $this->stockService->move(
-                    type: 'deliver',
-                    warehouseId: $salesOrder->warehouse_id,
-                    itemId: $item->item_id,
-                    lotId: $item->item_lot_id,
-                    fromLocationId: $item->from_location_id,
-                    toLocationId: null,
-                    qty: $remaining,
-                    uom: $uom,
-                    refType: 'POD',
-                    refId: sprintf('%d|%s', $item->id, $data->idempotencyKey),
-                    actorUserId: $data->actorUserId,
-                    movedAt: $data->signedAt,
-                    remarks: $data->notes,
-                );
-
-                if ($movement->wasRecentlyCreated) {
-                    $item->qty_delivered += $remaining;
-                    $item->save();
-                    $created = true;
+                $created = $created || $pod->wasRecentlyCreated;
+                $pod->refresh();
+            } else {
+                $pod = $existingPod;
+                $meta = $pod->meta ?? [];
+                if (! is_array($meta)) {
+                    $meta = [];
                 }
 
-                $movements[] = $movement;
+                $meta['idempotent_replay'] = true;
+                $meta['last_replay_at'] = $data->signedAt->toIso8601String();
+
+                $pod->forceFill(['meta' => $meta])->save();
             }
 
             $shipment->status = 'delivered';
@@ -350,7 +375,6 @@ class OutboundService
                 ]);
             }
 
-            $pod->refresh();
             $shipment->load('items');
 
             if ($created) {
@@ -371,6 +395,7 @@ class OutboundService
                 'shipment' => $shipment,
                 'movements' => $movements,
                 'created' => $created,
+                'replayed' => ! $created,
             ];
         });
     }

@@ -24,6 +24,24 @@ OutboundService
      └──▶ DB::afterCommit ──▶ Domain Event ──▶ Ably Broadcast ──▶ Dashboard & Shipment UI update
 ```
 
+## Driver App (Pick → Dispatch → Proof of Delivery)
+- **Auth & Guard:** Driver login via Sanctum → setiap request dilewatkan middleware `role:driver` + policy `driver-access-shipment` yang memastikan shipment dimiliki/dialokasikan ke driver tersebut.
+- **Rate Limit:** `RateLimiter::for('driver-api')` membatasi 30 request/menit/driver. Respon 429 membawa pesan human readable dan header `Retry-After`.
+- **Idempotensi:** Header `X-Idempotency-Key` opsional. Bila kosong sistem menurunkan fallback deterministik:
+  - Pick → `hash('sha256', sprintf('PICK|shipment_item|qty|ts'))`
+  - Dispatch → `hash('sha256', sprintf('DISPATCH|shipment_id'))`
+  - PoD → `hash('sha256', sprintf('POD|shipment_id|signer|ts'))`
+- **PoD Storage:** Upload multipart (image ≤ 5MB) disimpan di disk `config('wms.storage.pod_disk')` (default S3). Metadata PoD memuat `user_agent`, `device_id`, dan penanda `idempotent_replay` saat key dipakai ulang. Replay dengan key sama → tidak menggandakan file/movement dan mengembalikan `created=false`.
+
+```
+Driver Device ──▶ /api/driver/(pick|dispatch|pod)
+                   │
+                   ├──▶ FormRequest guard & policy
+                   ├──▶ OutboundService::move(...) + PoD persist
+                   │
+                   └──▶ DB::afterCommit ──▶ Domain Event ──▶ Ably ──▶ Dashboard + Shipment Show
+```
+
 ## Handheld Scan Flow
 - **Endpoint:** `/api/scan` menerima payload dari perangkat (sku, qty, direction, location, ts, device_id, lot_no?).
 - **Idempoten:** Header opsional `X-Idempotency-Key`; jika kosong sistem hash `SCAN|device|ts|payload` dan menurunkannya ke `StockService::move()` (ref_type `SCAN`).

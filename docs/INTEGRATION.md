@@ -129,6 +129,55 @@ Ensure Laravel scheduler (or job processors) run with the same database and cach
   - Header `X-Idempotency-Key` recommended; fallback `POD|hash(shipment,signed_by,ts,media)`.
   - Response returns `{ pod, shipment, movements[], idempotency_key }`; StockService `'deliver'` moves release residual allocations. Replays reuse same movements.
 
+### Driver API (Pick, Dispatch, PoD)
+- Route prefix `/api/driver/*` memakai middleware `auth:sanctum`, `role:driver`, serta limiter `driver-api` (30 request/menit per driver). Semua respon menyertakan header `Idempotency-Key` dan flag `created` (`false` ketika replay idempotent).
+- **`POST /api/driver/pick`**
+  - Body: `{ "shipment_item_id": 1, "qty": 2.5, "picked_at": "2025-10-09T08:30:00+07:00", "remarks": "First batch" }`
+  - Validasi: qty > 0 dan tidak melebihi sisa planned; shipment berstatus delivered langsung ditolak (422).
+  - Fallback idempoten: `hash('sha256', sprintf('PICK|%d|%s|%s', shipment_item_id, qty, picked_at))`.
+- **`POST /api/driver/dispatch`**
+  - Body: `{ "shipment_id": 7001, "dispatched_at": "2025-10-09T09:00:00+07:00" }`
+  - Validasi: status shipment harus `draft`/`allocated`/`dispatched` dan driver/kendaraan harus aktif. Shipment delivered → 409 dengan header `Idempotency-Key`.
+  - Fallback idempoten: `hash('sha256', sprintf('DISPATCH|%d', shipment_id))`.
+- **`POST /api/driver/pod`** (multipart)
+  - Field wajib: `shipment_id`, `signer_name`, `signed_at`. Opsional: `notes`, `meta[]`, `device_id`, `photo` (gambar ≤ 5MB, mimetype image/*).
+  - Validasi: shipment minimal `dispatched`. PoD hanya dibuat sekali per shipment; replay dengan key sama → `201` pertama, `200` berikutnya (`created=false`, `replayed=true`). Percobaan PoD dengan key berbeda → 409.
+  - Fallback idempoten: `hash('sha256', sprintf('POD|%d|%s|%s', shipment_id, signer_name, signed_at))`.
+- Contoh `curl` (multipart):
+
+```bash
+curl -X POST https://app.example.com/api/driver/pod \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Idempotency-Key: POD-KEY-123" \
+  -F shipment_id=7001 \
+  -F signer_name="Budi" \
+  -F signed_at="2025-10-09T12:15:00+07:00" \
+  -F device_id="handheld-01" \
+  -F meta[temperature]="ambient" \
+  -F photo=@/path/to/proof.jpg
+```
+
+- Replay (`200 OK`):
+
+```json
+{
+  "data": {
+    "pod": { "id": 901, "signed_by": "Budi", "photo_path": "pods/photos/...", "meta": { "idempotent_replay": true } },
+    "shipment": { "id": 7001, "status": "delivered" },
+    "movements": [],
+    "created": false,
+    "replayed": true
+  },
+  "created": false,
+  "replayed": true
+}
+```
+
+### Proof of Delivery Storage
+- Disk PoD mengikuti `config('wms.storage.pod_disk')` (default `s3`). Pada serverless/Vercel set `FILESYSTEM_DISK=s3` dan siapkan `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET`.
+- Berkas disimpan privat (`pods/photos/...`) dan metadata PoD otomatis berisi `user_agent`, `device_id`, serta flag `idempotent_replay` saat replay terjadi.
+- Gunakan `App\Support\Storage\TemporaryUrlGenerator` untuk membuat URL sementara (presigned) di admin UI. Generator memakai `temporaryUrl` bila driver mendukung (S3) dan fallback ke `Storage::url()` untuk disk lokal.
+
 ### Outbound Broadcast Events
 - Channel privat: `wms.outbound.shipment.{shipmentId}`
 - Emit dilakukan setelah commit transaksi (`DB::afterCommit`), memastikan payload mencerminkan data terbaru di database.
@@ -189,6 +238,15 @@ echo.private(`wms.outbound.shipment.${shipmentId}`)
   .listen('.shipment.dispatched', ({ dispatched_at }) => markDispatched(dispatched_at))
   .listen('.shipment.delivered', ({ delivered_at, signer }) => markDelivered(delivered_at, signer));
 ```
+
+## Vercel / Serverless Checklist
+- Variabel lingkungan minimum:
+  - `FILESYSTEM_DISK=s3`
+  - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `AWS_BUCKET`
+  - `BROADCAST_DRIVER=ably`, `ABLY_KEY=<key>`
+  - `DB_CA_PATH=/var/task/storage/app/certs/tidb-ca.pem`
+- Pertimbangkan menonaktifkan koneksi persisten (`PDO::ATTR_PERSISTENT=false`) dan menambah timeout DB bila workload tinggi.
+- Sanity run sebelum deploy: `composer qa`, `php artisan migrate --force`, `npm run build` (atau `yarn build`/`pnpm build`).
 
 ## Admin CRUD & Quick Actions
 - Semua rute admin berada di bawah prefix `admin/*` dengan middleware `auth` + `role:admin_gudang`. Cakupan:
