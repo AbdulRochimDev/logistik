@@ -235,4 +235,14 @@ class StockService
         $stock->qty_on_hand = $newOnHand;
         $stock->qty_allocated = $newAllocated;
     }
+
+    /**
+     * Expose the configured stock movement matrix for observability/monitoring use-cases.
+     *
+     * @return array<string, array<int, array{direction: string, on_hand: float, allocated: float}>>
+     */
+    public function movementMatrix(): array
+    {
+        return $this->matrix;
+    }
 }
