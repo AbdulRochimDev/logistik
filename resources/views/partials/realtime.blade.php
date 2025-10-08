@@ -1,4 +1,5 @@
 @php
+    use Illuminate\Contracts\Support\Arrayable;
     use Illuminate\Support\Collection;
     use Traversable;
 
@@ -9,6 +10,8 @@
     $normalizeShipmentIds = static function ($values): array {
         if ($values instanceof Collection) {
             $values = $values->all();
+        } elseif ($values instanceof Arrayable) {
+            $values = $values->toArray();
         } elseif ($values instanceof Traversable) {
             $values = iterator_to_array($values, false);
         }
