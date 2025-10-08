@@ -22,18 +22,38 @@ class PodController
 
         $this->authorizeDriver($shipment);
 
-        $idempotencyKey = $this->resolveIdempotencyKey(
-            $request,
+        $shipment->loadMissing('proofOfDelivery');
+
+        $idempotencyKey = $request->resolveIdempotencyKey(
             $shipment->id,
             $request->string('signer_name')->toString(),
-            $request->input('signed_at')
+            (string) $request->input('signed_at')
         );
 
-        $photoPath = null;
-        if ($request->hasFile('photo')) {
-            $disk = config('filesystems.default', 'local');
-            $photoPath = Storage::disk($disk)->putFile('pods/photos', $request->file('photo'));
+        $existingPod = $shipment->proofOfDelivery;
+        $isReplay = $existingPod && $existingPod->external_idempotency_key === $idempotencyKey;
+
+        if ($existingPod && ! $isReplay) {
+            return response()->json([
+                'message' => 'PoD sudah tercatat untuk shipment ini.',
+            ], 409)->withHeaders([
+                'Idempotency-Key' => $idempotencyKey,
+            ]);
         }
+
+        $podDisk = config('wms.storage.pod_disk', config('filesystems.default', 's3'));
+        $photoPath = $existingPod?->photo_path;
+
+        if (! $isReplay && $request->hasFile('photo')) {
+            $photoPath = Storage::disk($podDisk)->putFile('pods/photos', $request->file('photo'), ['visibility' => 'private']);
+        }
+
+        $meta = $request->input('meta', []);
+        $meta = is_array($meta) ? $meta : [];
+        $meta = array_filter(array_merge($meta, [
+            'user_agent' => $request->userAgent(),
+            'device_id' => $request->input('device_id'),
+        ]), static fn ($value) => $value !== null && $value !== '');
 
         $dto = new ShipmentPodData(
             shipmentId: $shipment->id,
@@ -45,7 +65,7 @@ class PodController
             photoPath: $photoPath,
             signaturePath: null,
             notes: $request->input('notes'),
-            meta: $request->input('meta'),
+            meta: $meta,
         );
 
         try {
@@ -58,7 +78,11 @@ class PodController
 
         return response()->json([
             'data' => $result,
-        ], $result['created'] ? 201 : 200);
+            'created' => $result['created'],
+            'replayed' => $result['replayed'],
+        ], $result['created'] ? 201 : 200)->withHeaders([
+            'Idempotency-Key' => $idempotencyKey,
+        ]);
     }
 
     private function authorizeDriver(Shipment $shipment): void
@@ -68,12 +92,4 @@ class PodController
         }
     }
 
-    private function resolveIdempotencyKey(DriverPodRequest $request, int $shipmentId, string $signer, string $timestamp): string
-    {
-        $header = trim((string) $request->headers->get('X-Idempotency-Key', ''));
-
-        return $header !== ''
-            ? $header
-            : hash('sha256', sprintf('POD|%d|%s|%s', $shipmentId, $signer, $timestamp));
-    }
 }

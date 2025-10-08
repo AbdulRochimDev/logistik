@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $signed_by
  * @property string|null $signer_id
  * @property \Carbon\CarbonInterface $signed_at
+ * @property string|null $photo_path
+ * @property string|null $signature_path
+ * @property string|null $notes
  * @property array|null $meta
  * @property string|null $external_idempotency_key
  * @property-read Shipment $shipment

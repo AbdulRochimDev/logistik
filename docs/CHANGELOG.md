@@ -1,5 +1,18 @@
 # Changelog
+# 2025-10-09
+- Milestone 3: pengerasan Driver API (FormRequest guard qty/status, policy assignment, idempotency header) plus rate limiter 30/menit.
+- Memindahkan penyimpanan PoD ke disk `wms.storage.pod_disk` (default S3) dengan metadata device/UA serta generator URL sementara untuk admin UI.
+- Menambahkan badge replay & tombol presigned link pada Shipment Show, menampilkan PoD signer dan status idempotent.
+- Suite Pest baru: `DriverPickApiInvalidQtyTest`, `DriverUnauthorizedAccessTest`, `DriverDispatchRulesTest`, `DriverPodIdempotencyTest`, `DriverApiRateLimitTest`, `PodUploadStorageTest`, `ShipmentAdminPodViewTest`.
+- Dokumentasi diperbarui (INTEGRATION.md, WORKFLOW.md, GIT_PUSH.md) dengan kontrak Driver API, storage PoD, checklist Vercel, dan pra-push QA.
 
+# 2025-10-08
+- Milestone 2: menambahkan event realtime outbound (`PickCompleted`, `ShipmentDispatched`, `ShipmentDelivered`) dengan emisi pasca-commit dan channel privat `wms.outbound.shipment.{id}`.
+- Membuat partial Blade realtime yang memuat Ably + Laravel Echo, menggabungkan aktivitas terbaru ke dashboard dan memperbarui progress shipment tanpa reload.
+- Memperluas dashboard admin dengan KPI open shipments/picked today/delivered today, agregasi warehouse harian, serta feed gabungan stock movement + event outbound.
+- Menambahkan progress pick live di halaman shipment show, lengkap dengan data attribute untuk pembaruan via event.
+- Menyertakan konfigurasi broadcasting (`config/broadcasting.php`), guard channel, dan dokumentasi integrasi (INTEGRATION.md & WORKFLOW.md) yang mencakup diagram alur baru.
+- Menambahkan suite Pest `RealtimeBroadcastTest`, `PostCommitEmissionTest`, `DashboardOutboundStatsTest`, dan `ShipmentShowRealtimeWiringTest` untuk memverifikasi alur realtime & KPI.
 ## 2025-10-07
 - Added consolidated logistics core migration covering roles, warehouse/location/item master data, PO/GRN tables, stocks, and stock_movements.
 - Introduced stock movement idempotency indexes and generated column for qty_available.

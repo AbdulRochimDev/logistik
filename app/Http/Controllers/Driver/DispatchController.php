@@ -19,7 +19,7 @@ class DispatchController
 
         $this->authorizeDriver($shipment);
 
-        $idempotencyKey = $this->resolveIdempotencyKey($request, $shipment->id);
+        $idempotencyKey = $request->resolveIdempotencyKey($shipment->id);
 
         $result = $this->service->dispatch(
             shipment: $shipment,
@@ -30,7 +30,10 @@ class DispatchController
 
         return response()->json([
             'data' => $result['shipment'],
-        ], $result['status_changed'] ? 201 : 200);
+            'created' => $result['status_changed'],
+        ], $result['status_changed'] ? 201 : 200)->withHeaders([
+            'Idempotency-Key' => $idempotencyKey,
+        ]);
     }
 
     private function authorizeDriver(Shipment $shipment): void
@@ -38,14 +41,5 @@ class DispatchController
         if (! Gate::allows('driver-access-shipment', $shipment)) {
             abort(403, 'Unauthorized shipment.');
         }
-    }
-
-    private function resolveIdempotencyKey(DriverDispatchRequest $request, int $shipmentId): string
-    {
-        $header = trim((string) $request->headers->get('X-Idempotency-Key', ''));
-
-        return $header !== ''
-            ? $header
-            : hash('sha256', sprintf('DISPATCH|%d', $shipmentId));
     }
 }

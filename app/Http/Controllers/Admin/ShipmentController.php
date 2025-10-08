@@ -22,10 +22,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Support\Storage\TemporaryUrlGenerator;
 
 class ShipmentController extends Controller
 {
-    public function __construct(private readonly OutboundService $outboundService) {}
+    public function __construct(
+        private readonly OutboundService $outboundService,
+        private readonly TemporaryUrlGenerator $temporaryUrlGenerator
+    ) {}
 
     public function index(Request $request): View
     {
@@ -79,7 +83,22 @@ class ShipmentController extends Controller
     {
         $shipment->load(['items.item', 'items.lot', 'items.fromLocation', 'driver', 'vehicle', 'proofOfDelivery', 'outboundShipment.salesOrder.customer']);
 
-        return view('admin.shipments.show', compact('shipment'));
+        $podUrl = null;
+        $idempotentReplay = false;
+        $pod = $shipment->proofOfDelivery;
+
+        if ($pod) {
+            $meta = $pod->meta;
+            $idempotentReplay = is_array($meta) && ($meta['idempotent_replay'] ?? false);
+
+            if ($pod->photo_path) {
+                $disk = config('wms.storage.pod_disk', config('filesystems.default', 's3'));
+                $ttl = (int) config('wms.storage.pod_url_ttl', 900);
+                $podUrl = $this->temporaryUrlGenerator->generate($disk, $pod->photo_path, $ttl) ?? null;
+            }
+        }
+
+        return view('admin.shipments.show', compact('shipment', 'podUrl', 'idempotentReplay'));
     }
 
     public function edit(Shipment $shipment)

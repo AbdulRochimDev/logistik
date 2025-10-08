@@ -10,6 +10,9 @@ use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Outbound\DTO\PickLineData;
 use App\Domain\Outbound\DTO\ShipmentPodData;
+use App\Domain\Outbound\Events\PickCompleted;
+use App\Domain\Outbound\Events\ShipmentDelivered;
+use App\Domain\Outbound\Events\ShipmentDispatched;
 use App\Domain\Outbound\Models\Pod;
 use App\Domain\Outbound\Models\Shipment;
 use App\Domain\Outbound\Models\ShipmentItem;
@@ -157,7 +160,9 @@ class OutboundService
                 remarks: $data->remarks,
             );
 
-            if ($movement->wasRecentlyCreated) {
+            $shouldBroadcastPick = $movement->wasRecentlyCreated;
+
+            if ($shouldBroadcastPick) {
                 $shipmentItem->qty_picked += $data->quantity;
                 $shipmentItem->qty_shipped += $data->quantity;
                 $shipmentItem->save();
@@ -171,6 +176,22 @@ class OutboundService
 
             $shipmentItem->refresh();
             $shipment->refresh();
+
+            if ($shouldBroadcastPick) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'shipment_item_id' => $shipmentItem->id,
+                    'item_id' => $shipmentItem->item_id,
+                    'lot_id' => $shipmentItem->item_lot_id,
+                    'qty_picked' => (float) $data->quantity,
+                    'picked_at' => $data->pickedAt->toIso8601String(),
+                    'actor_user_id' => $data->actorUserId,
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new PickCompleted($payload));
+                });
+            }
 
             return [
                 'movement' => $movement,
@@ -218,6 +239,19 @@ class OutboundService
 
             $shipment->load(['items', 'driver', 'vehicle']);
 
+            if ($statusChanged) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'driver_id' => $shipment->driver_id,
+                    'vehicle_id' => $shipment->vehicle_id,
+                    'dispatched_at' => optional($shipment->dispatched_at)->toIso8601String(),
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new ShipmentDispatched($payload));
+                });
+            }
+
             return [
                 'shipment' => $shipment,
                 'status_changed' => $statusChanged,
@@ -244,18 +278,32 @@ class OutboundService
                 throw new StockException('Shipment is not linked to a sales order.');
             }
 
-            $existingPod = $data->idempotencyKey
-                ? Pod::query()->where('external_idempotency_key', $data->idempotencyKey)->first()
-                : null;
+            $shipment->loadMissing('proofOfDelivery');
 
-            if ($existingPod && $existingPod->shipment_id !== $shipment->id) {
-                throw new StockException('Idempotency key already used for another shipment.', 409);
+            if ($data->idempotencyKey !== '') {
+                $conflictingPodExists = Pod::query()
+                    ->where('external_idempotency_key', $data->idempotencyKey)
+                    ->where('shipment_id', '!=', $shipment->id)
+                    ->exists();
+
+                if ($conflictingPodExists) {
+                    throw new StockException('Idempotency key already used for another shipment.', 409);
+                }
             }
 
-            /** @var Pod $pod */
-            $pod = $shipment->proofOfDelivery()->updateOrCreate(
-                ['shipment_id' => $shipment->id],
-                [
+            /** @var Pod|null $existingPod */
+            $existingPod = $shipment->proofOfDelivery;
+
+            if ($existingPod && $existingPod->external_idempotency_key !== $data->idempotencyKey) {
+                throw new StockException('Proof of delivery already recorded for this shipment.', 409);
+            }
+
+            $movements = [];
+            $created = false;
+
+            if (! $existingPod) {
+                /** @var Pod $pod */
+                $pod = $shipment->proofOfDelivery()->create([
                     'signed_by' => $data->signerName,
                     'signer_id' => $data->signerId,
                     'signed_at' => $data->signedAt,
@@ -264,44 +312,55 @@ class OutboundService
                     'notes' => $data->notes,
                     'meta' => $data->meta,
                     'external_idempotency_key' => $data->idempotencyKey,
-                ]
-            );
+                ]);
 
-            $created = $pod->wasRecentlyCreated;
-            $movements = [];
+                foreach ($shipment->items as $item) {
+                    $remaining = $item->qty_picked - $item->qty_delivered;
+                    if ($remaining <= 0) {
+                        continue;
+                    }
 
-            foreach ($shipment->items as $item) {
-                $remaining = $item->qty_picked - $item->qty_delivered;
-                if ($remaining <= 0) {
-                    continue;
+                    $salesOrderItem = $item->salesOrderItem;
+                    $uom = $salesOrderItem ? $salesOrderItem->uom : 'PCS';
+
+                    $movement = $this->stockService->move(
+                        type: 'deliver',
+                        warehouseId: $salesOrder->warehouse_id,
+                        itemId: $item->item_id,
+                        lotId: $item->item_lot_id,
+                        fromLocationId: $item->from_location_id,
+                        toLocationId: null,
+                        qty: $remaining,
+                        uom: $uom,
+                        refType: 'POD',
+                        refId: sprintf('%d|%s', $item->id, $data->idempotencyKey),
+                        actorUserId: $data->actorUserId,
+                        movedAt: $data->signedAt,
+                        remarks: $data->notes,
+                    );
+
+                    if ($movement->wasRecentlyCreated) {
+                        $item->qty_delivered += $remaining;
+                        $item->save();
+                        $created = true;
+                    }
+
+                    $movements[] = $movement;
                 }
 
-                $salesOrderItem = $item->salesOrderItem;
-                $uom = $salesOrderItem ? $salesOrderItem->uom : 'PCS';
-
-                $movement = $this->stockService->move(
-                    type: 'deliver',
-                    warehouseId: $salesOrder->warehouse_id,
-                    itemId: $item->item_id,
-                    lotId: $item->item_lot_id,
-                    fromLocationId: $item->from_location_id,
-                    toLocationId: null,
-                    qty: $remaining,
-                    uom: $uom,
-                    refType: 'POD',
-                    refId: sprintf('%d|%s', $item->id, $data->idempotencyKey),
-                    actorUserId: $data->actorUserId,
-                    movedAt: $data->signedAt,
-                    remarks: $data->notes,
-                );
-
-                if ($movement->wasRecentlyCreated) {
-                    $item->qty_delivered += $remaining;
-                    $item->save();
-                    $created = true;
+                $created = $created || $pod->wasRecentlyCreated;
+                $pod->refresh();
+            } else {
+                $pod = $existingPod;
+                $meta = $pod->meta ?? [];
+                if (! is_array($meta)) {
+                    $meta = [];
                 }
 
-                $movements[] = $movement;
+                $meta['idempotent_replay'] = true;
+                $meta['last_replay_at'] = $data->signedAt->toIso8601String();
+
+                $pod->forceFill(['meta' => $meta])->save();
             }
 
             $shipment->status = 'delivered';
@@ -316,14 +375,27 @@ class OutboundService
                 ]);
             }
 
-            $pod->refresh();
             $shipment->load('items');
+
+            if ($created) {
+                $payload = [
+                    'shipment_id' => $shipment->id,
+                    'pod_id' => $pod->id,
+                    'delivered_at' => optional($shipment->delivered_at)->toIso8601String(),
+                    'signer' => $pod->signed_by,
+                ];
+
+                DB::afterCommit(static function () use ($payload): void {
+                    event(new ShipmentDelivered($payload));
+                });
+            }
 
             return [
                 'pod' => $pod,
                 'shipment' => $shipment,
                 'movements' => $movements,
                 'created' => $created,
+                'replayed' => ! $created,
             ];
         });
     }

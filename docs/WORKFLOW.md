@@ -14,6 +14,33 @@
 - **Pick:** `POST /api/admin/outbound/pick/complete` membentuk `PickLineData` dan memanggil `OutboundService::completePick()` → `StockService::move('pick', ...)` mengurangi `qty_on_hand` sambil menjaga `qty_allocated` hingga PoD.
 - **Dispatch:** `POST /api/admin/outbound/shipment/dispatch` memperbarui carrier/timestamp pada shipment + outbound.
 - **Deliver:** Driver/admin memanggil `POST /api/admin/outbound/shipment/deliver` membawa `ShipmentPodData`; layanan membuat PoD (idempotensi key) dan menjalankan `StockService::move('deliver', ...)` untuk melepas alokasi residual.
+- **Realtime:** Setelah setiap aksi pick/dispatch/deliver, `OutboundService` mendaftarkan event domain (`PickCompleted`, `ShipmentDispatched`, `ShipmentDelivered`) yang disiarkan ke channel `wms.outbound.shipment.{shipmentId}` setelah transaksi commit.
+
+```
+OutboundService
+     │
+     ├──▶ StockService::move()
+     │
+     └──▶ DB::afterCommit ──▶ Domain Event ──▶ Ably Broadcast ──▶ Dashboard & Shipment UI update
+```
+
+## Driver App (Pick → Dispatch → Proof of Delivery)
+- **Auth & Guard:** Driver login via Sanctum → setiap request dilewatkan middleware `role:driver` + policy `driver-access-shipment` yang memastikan shipment dimiliki/dialokasikan ke driver tersebut.
+- **Rate Limit:** `RateLimiter::for('driver-api')` membatasi 30 request/menit/driver. Respon 429 membawa pesan human readable dan header `Retry-After`.
+- **Idempotensi:** Header `X-Idempotency-Key` opsional. Bila kosong sistem menurunkan fallback deterministik:
+  - Pick → `hash('sha256', sprintf('PICK|shipment_item|qty|ts'))`
+  - Dispatch → `hash('sha256', sprintf('DISPATCH|shipment_id'))`
+  - PoD → `hash('sha256', sprintf('POD|shipment_id|signer|ts'))`
+- **PoD Storage:** Upload multipart (image ≤ 5MB) disimpan di disk `config('wms.storage.pod_disk')` (default S3). Metadata PoD memuat `user_agent`, `device_id`, dan penanda `idempotent_replay` saat key dipakai ulang. Replay dengan key sama → tidak menggandakan file/movement dan mengembalikan `created=false`.
+
+```
+Driver Device ──▶ /api/driver/(pick|dispatch|pod)
+                   │
+                   ├──▶ FormRequest guard & policy
+                   ├──▶ OutboundService::move(...) + PoD persist
+                   │
+                   └──▶ DB::afterCommit ──▶ Domain Event ──▶ Ably ──▶ Dashboard + Shipment Show
+```
 
 ## Handheld Scan Flow
 - **Endpoint:** `/api/scan` menerima payload dari perangkat (sku, qty, direction, location, ts, device_id, lot_no?).

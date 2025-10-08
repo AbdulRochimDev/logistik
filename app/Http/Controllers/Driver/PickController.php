@@ -23,11 +23,10 @@ class PickController
 
         $this->authorizeDriver($shipmentItem->shipment);
 
-        $idempotencyKey = $this->resolveIdempotencyKey(
-            $request,
-            shipmentItemId: $shipmentItem->id,
-            quantity: $request->input('qty'),
-            timestamp: $request->input('picked_at')
+        $idempotencyKey = $request->resolveIdempotencyKey(
+            $shipmentItem->id,
+            (float) $request->input('qty'),
+            (string) $request->input('picked_at')
         );
 
         $dto = new PickLineData(
@@ -47,12 +46,17 @@ class PickController
             ], $exception->status());
         }
 
+        $created = $result['movement']->wasRecentlyCreated;
+
         return response()->json([
             'data' => [
                 'movement_id' => $result['movement']->id,
                 'shipment_item' => $result['shipment_item'],
             ],
-        ], $result['movement']->wasRecentlyCreated ? 201 : 200);
+            'created' => $created,
+        ], $created ? 201 : 200)->withHeaders([
+            'Idempotency-Key' => $idempotencyKey,
+        ]);
     }
 
     private function authorizeDriver(Shipment $shipment): void
@@ -60,14 +64,5 @@ class PickController
         if (! Gate::allows('driver-access-shipment', $shipment)) {
             abort(403, 'Unauthorized shipment.');
         }
-    }
-
-    private function resolveIdempotencyKey(DriverPickRequest $request, int $shipmentItemId, float $quantity, string $timestamp): string
-    {
-        $header = trim((string) $request->headers->get('X-Idempotency-Key', ''));
-
-        return $header !== ''
-            ? $header
-            : hash('sha256', sprintf('PICK|%d|%s|%s', $shipmentItemId, $quantity, $timestamp));
     }
 }

@@ -5,6 +5,8 @@
             <th>On Hand</th>
             <th>Allocated</th>
             <th>Available</th>
+            <th>Picked Today</th>
+            <th>Delivered Today</th>
         </tr>
     </thead>
     <tbody>
@@ -17,10 +19,12 @@
             <td>{{ number_format((float) ($warehouse->qty_on_hand ?? 0), 0, ',', '.') }}</td>
             <td>{{ number_format((float) ($warehouse->qty_allocated ?? 0), 0, ',', '.') }}</td>
             <td>{{ number_format((float) $available, 0, ',', '.') }}</td>
+            <td>{{ number_format((float) ($warehouse->picked_today ?? 0), 0, ',', '.') }}</td>
+            <td>{{ number_format((float) ($warehouse->delivered_today ?? 0), 0, ',', '.') }}</td>
         </tr>
     @empty
         <tr>
-            <td colspan="4">Belum ada data stok gudang.</td>
+            <td colspan="6">Belum ada data stok gudang.</td>
         </tr>
     @endforelse
     </tbody>
