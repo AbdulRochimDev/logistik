@@ -7,6 +7,9 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 require_once __DIR__.'/../app/Support/Auth/HasApiTokens.php';
+require_once __DIR__.'/cache_directory.php';
+
+ensureBootstrapCacheDirectory(__DIR__.'/cache');
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
