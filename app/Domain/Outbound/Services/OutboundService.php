@@ -14,12 +14,16 @@ use App\Domain\Outbound\Models\Pod;
 use App\Domain\Outbound\Models\Shipment;
 use App\Domain\Outbound\Models\ShipmentItem;
 use App\Domain\Outbound\Models\SoItem;
+use App\Domain\Outbound\Support\OutboundValidator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 class OutboundService
 {
-    public function __construct(private readonly StockService $stockService) {}
+    public function __construct(
+        private readonly StockService $stockService,
+        private readonly OutboundValidator $validator
+    ) {}
 
     /**
      * @return array{movement: StockMovement, so_item: SoItem}
@@ -42,18 +46,7 @@ class OutboundService
             $soItem->loadMissing('salesOrder.warehouse');
             $salesOrder = $soItem->salesOrder;
 
-            if (! $salesOrder) {
-                throw new StockException('Sales order not found for item.');
-            }
-
-            if ($location->warehouse_id !== $salesOrder->warehouse_id) {
-                throw new StockException('Allocation location must be in the same warehouse as the sales order.');
-            }
-
-            $outstanding = $soItem->ordered_qty - $soItem->allocated_qty;
-            if ($outstanding + 0.0001 < $qty) {
-                throw new StockException('Allocation exceeds outstanding order quantity.');
-            }
+            $this->validator->ensureAllocationContext($soItem, $location, $qty);
 
             /** @var Stock|null $stock */
             $stock = $location->stocks()
@@ -68,9 +61,7 @@ class OutboundService
                 ->first();
 
             $available = $stock ? (float) $stock->qty_available : 0.0;
-            if ($available + 0.0001 < $qty) {
-                throw new StockException('Insufficient available quantity to allocate.');
-            }
+            $this->validator->ensureStockAvailability($available, $qty);
 
             $movement = $this->stockService->move(
                 type: 'allocate',
@@ -118,25 +109,12 @@ class OutboundService
 
             $shipment = $shipmentItem->shipment;
 
-            if ($shipment->status === 'delivered') {
-                throw new StockException('Shipment already delivered.');
-            }
-
             $shipment->loadMissing('outboundShipment.salesOrder');
             $outboundShipment = $shipment->outboundShipment;
             $salesOrder = $outboundShipment?->salesOrder;
-            if (! $outboundShipment || ! $salesOrder) {
-                throw new StockException('Shipment is not linked to a sales order.');
-            }
 
-            if ($shipmentItem->from_location_id === null) {
-                throw new StockException('Shipment item missing pick location.');
-            }
-
-            $remaining = $shipmentItem->qty_planned - $shipmentItem->qty_picked;
-            if ($data->quantity > $remaining + 0.0001) {
-                throw new StockException('Pick quantity exceeds planned amount.');
-            }
+            $this->validator->ensurePickable($shipmentItem, $data->quantity);
+            $this->validator->ensureShipmentLinkedToSalesOrder($shipment);
 
             $salesOrderItem = $shipmentItem->salesOrderItem;
             $uom = $salesOrderItem ? $salesOrderItem->uom : 'PCS';
@@ -195,6 +173,8 @@ class OutboundService
                 ];
             }
 
+            $this->validator->ensureDispatchable($shipment);
+
             if ($shipment->dispatched_at && $shipment->status === 'dispatched') {
                 return [
                     'shipment' => $shipment,
@@ -237,12 +217,10 @@ class OutboundService
                 ->lockForUpdate()
                 ->findOrFail($data->shipmentId);
 
-            $shipment->loadMissing('outboundShipment.salesOrder');
+            $this->validator->ensureDeliverable($shipment);
+
             $outboundShipment = $shipment->outboundShipment;
             $salesOrder = $outboundShipment?->salesOrder;
-            if (! $outboundShipment || ! $salesOrder) {
-                throw new StockException('Shipment is not linked to a sales order.');
-            }
 
             $existingPod = $data->idempotencyKey
                 ? Pod::query()->where('external_idempotency_key', $data->idempotencyKey)->first()

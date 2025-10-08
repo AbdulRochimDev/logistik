@@ -7,15 +7,19 @@ use App\Domain\Inventory\Models\Item;
 use App\Domain\Inventory\Models\ItemLot;
 use App\Domain\Inventory\Models\Location;
 use App\Domain\Inventory\Services\StockService;
+use App\Support\Idempotency\Exceptions\IdempotencyException;
+use App\Support\Idempotency\IdempotencyManager;
 use App\Domain\Scan\Http\Requests\ScanRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class ScanController
 {
-    public function __construct(private readonly StockService $stockService) {}
+    public function __construct(
+        private readonly StockService $stockService,
+        private readonly IdempotencyManager $idempotency
+    ) {}
 
     public function __invoke(ScanRequest $request): JsonResponse
     {
@@ -46,7 +50,21 @@ class ScanController
         $fromLocation = $direction === 'out' ? $location->id : null;
         $toLocation = $direction === 'in' ? $location->id : null;
 
-        $idempotencyKey = $this->resolveIdempotencyKey($request, $lotNo);
+        try {
+            $idempotencyKey = $this->idempotency->resolve($request, 'scan.mutation', [
+                $request->input('device_id'),
+                $request->input('ts'),
+                $request->input('sku'),
+                $request->input('qty'),
+                $request->input('direction'),
+                $request->input('location'),
+                $lotNo,
+            ]);
+        } catch (IdempotencyException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 409);
+        }
         $refId = sprintf('%s|%s', Str::upper($direction), $idempotencyKey);
 
         try {
@@ -82,24 +100,4 @@ class ScanController
         ], $movement->wasRecentlyCreated ? 201 : 200);
     }
 
-    private function resolveIdempotencyKey(Request $request, string $lotNo): string
-    {
-        $headerKey = $request->headers->get('X-Idempotency-Key');
-        if ($headerKey) {
-            return trim($headerKey);
-        }
-
-        $payload = implode('|', [
-            'SCAN',
-            (string) $request->input('device_id'),
-            $request->input('ts'),
-            $request->input('sku'),
-            $request->input('qty'),
-            $request->input('direction'),
-            $request->input('location'),
-            $lotNo,
-        ]);
-
-        return hash('sha256', $payload);
-    }
 }

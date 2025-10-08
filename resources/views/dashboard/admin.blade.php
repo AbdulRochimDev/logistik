@@ -232,6 +232,10 @@
                 <span>Posting GRN Baru</span>
                 <span>→</span>
             </a>
+            <a href="{{ route('admin.stock-monitor') }}">
+                <span>Monitor Pergerakan Stok</span>
+                <span>→</span>
+            </a>
             <a href="{{ route('admin.locations.index') }}">
                 <span>Kelola Lokasi Gudang</span>
                 <span>→</span>

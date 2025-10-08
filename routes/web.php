@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ItemController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ShipmentController;
+use App\Http\Controllers\Admin\StockMonitorController;
 use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\VehicleController;
 use App\Http\Controllers\Auth\LoginController;
@@ -44,6 +45,8 @@ Route::middleware(['auth', 'role:admin_gudang'])
             ->name('shipments.dispatch');
         Route::post('shipments/{shipment}/deliver', [ShipmentController::class, 'deliver'])
             ->name('shipments.deliver');
+
+        Route::get('stock-monitor', StockMonitorController::class)->name('stock-monitor');
 
         Route::get('grn/create', [GrnController::class, 'create'])->name('grn.create');
         Route::post('grn', [GrnController::class, 'store'])->name('grn.store');

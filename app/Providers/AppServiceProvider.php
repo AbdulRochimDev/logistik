@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\Inventory\Events\StockUpdated;
+use App\Domain\Inventory\Listeners\PersistStockUpdated;
 use App\Domain\Outbound\Models\Shipment;
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(StockUpdated::class, PersistStockUpdated::class);
+
         Gate::define('driver-access-shipment', function (User $user, Shipment $shipment): bool {
             $driver = $user->driver;
 
