@@ -7,13 +7,17 @@ use App\Domain\Inbound\DTO\PostGrnLineData;
 use App\Domain\Inbound\Http\Requests\PostGrnRequest;
 use App\Domain\Inbound\Services\GrnService;
 use App\Domain\Inventory\Exceptions\StockException;
+use App\Support\Idempotency\Exceptions\IdempotencyException;
+use App\Support\Idempotency\IdempotencyManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PostGrnController
 {
-    public function __construct(private readonly GrnService $service) {}
+    public function __construct(
+        private readonly GrnService $service,
+        private readonly IdempotencyManager $idempotency
+    ) {}
 
     public function store(PostGrnRequest $request): JsonResponse
     {
@@ -25,7 +29,22 @@ class PostGrnController
                 throw new StockException('Unable to determine acting user for GRN posting.');
             }
 
-            $externalKeyHeader = $this->extractIdempotencyKey($request);
+            try {
+                $externalKeyHeader = $this->idempotency->resolve($request, 'inbound.grn', [
+                    $validated['inbound_shipment_id'],
+                    collect($validated['lines'])->map(fn ($line) => [
+                        $line['po_item_id'],
+                        $line['item_id'],
+                        $line['qty'],
+                        $line['to_location_id'],
+                        $line['lot_no'] ?? null,
+                    ])->toArray(),
+                ]);
+            } catch (IdempotencyException $exception) {
+                return response()->json([
+                    'message' => $exception->getMessage(),
+                ], 409);
+            }
 
             $lines = array_map(
                 fn (array $line) => new PostGrnLineData(
@@ -76,10 +95,4 @@ class PostGrnController
         ], $metadata['created'] ? 201 : 200);
     }
 
-    private function extractIdempotencyKey(Request $request): ?string
-    {
-        $header = $request->headers->get('X-Idempotency-Key');
-
-        return $header ? trim($header) : null;
-    }
 }
