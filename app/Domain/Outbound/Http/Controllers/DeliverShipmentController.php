@@ -7,27 +7,33 @@ use App\Domain\Outbound\DTO\ShipmentPodData;
 use App\Domain\Outbound\Http\Requests\DeliverShipmentRequest;
 use App\Domain\Outbound\Models\Shipment;
 use App\Domain\Outbound\Services\OutboundService;
+use App\Support\Idempotency\Exceptions\IdempotencyException;
+use App\Support\Idempotency\IdempotencyManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class DeliverShipmentController
 {
-    public function __construct(private readonly OutboundService $service) {}
+    public function __construct(
+        private readonly OutboundService $service,
+        private readonly IdempotencyManager $idempotency
+    ) {}
 
     public function __invoke(DeliverShipmentRequest $request): JsonResponse
     {
         /** @var Shipment $shipment */
         $shipment = Shipment::query()->findOrFail($request->integer('shipment_id'));
 
-        $idempotencyKey = $request->input('idempotency_key');
-        if (! $idempotencyKey) {
-            $idempotencyKey = $this->resolveIdempotencyKey(
-                $request,
+        try {
+            $idempotencyKey = $this->idempotency->resolve($request, 'outbound.pod', [
                 $shipment->id,
                 $request->string('signed_by')->toString(),
-                $request->input('signed_at')
-            );
+                $request->input('signed_at'),
+            ]);
+        } catch (IdempotencyException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 409);
         }
 
         $dto = new ShipmentPodData(
@@ -56,12 +62,4 @@ class DeliverShipmentController
         ], $result['created'] ? 201 : 200);
     }
 
-    private function resolveIdempotencyKey(Request $request, int $shipmentId, string $signedBy, string $timestamp): string
-    {
-        $header = trim((string) $request->headers->get('X-Idempotency-Key', ''));
-
-        return $header !== ''
-            ? $header
-            : hash('sha256', sprintf('POD|%d|%s|%s', $shipmentId, $signedBy, $timestamp));
-    }
 }

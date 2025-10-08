@@ -8,13 +8,17 @@ use App\Domain\Inventory\Models\Location;
 use App\Domain\Outbound\Http\Requests\AllocateRequest;
 use App\Domain\Outbound\Models\SoItem;
 use App\Domain\Outbound\Services\OutboundService;
+use App\Support\Idempotency\Exceptions\IdempotencyException;
+use App\Support\Idempotency\IdempotencyManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class AllocateController
 {
-    public function __construct(private readonly OutboundService $service) {}
+    public function __construct(
+        private readonly OutboundService $service,
+        private readonly IdempotencyManager $idempotency
+    ) {}
 
     public function __invoke(AllocateRequest $request): JsonResponse
     {
@@ -48,7 +52,18 @@ class AllocateController
 
         $qty = (float) $request->input('qty');
 
-        $key = $this->resolveIdempotencyKey($request, $soItem->id, $location->id, $qty, $lotNo);
+        try {
+            $key = $this->idempotency->resolve($request, 'outbound.allocate', [
+                $soItem->id,
+                $location->id,
+                $qty,
+                $lotNo,
+            ]);
+        } catch (IdempotencyException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 409);
+        }
 
         try {
             $result = $this->service->allocate(
@@ -77,20 +92,4 @@ class AllocateController
         ], $result['movement']->wasRecentlyCreated ? 201 : 200);
     }
 
-    private function resolveIdempotencyKey(Request $request, int $soItemId, int $locationId, float $qty, string $lotNo): string
-    {
-        $headerKey = $request->headers->get('X-Idempotency-Key');
-        if ($headerKey) {
-            return trim($headerKey);
-        }
-
-        $provided = trim((string) $request->input('idempotency_key', ''));
-        if ($provided !== '') {
-            return $provided;
-        }
-
-        $payload = implode('|', ['ALLOC', $soItemId, $locationId, $qty, $lotNo]);
-
-        return 'ALLOC|'.hash('sha256', $payload);
-    }
 }
